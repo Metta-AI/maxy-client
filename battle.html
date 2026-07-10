@@ -198,6 +198,26 @@
     box-shadow: inset -7px -8px 8px rgba(38, 102, 148, 0.28), 0 0 12px rgba(215, 249, 255, 0.95);
   }
 
+  .wall {
+    position: absolute;
+    z-index: 7;
+    box-sizing: border-box;
+    border: 2px solid #253d61;
+    border-radius: 4px;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, transparent 47%, rgba(18, 39, 75, 0.35) 48% 52%, transparent 53%),
+      repeating-linear-gradient(0deg, #8da4c1 0 17px, #405d82 18px 21px);
+    box-shadow: inset 0 0 0 2px rgba(235, 244, 255, 0.28), 0 5px 9px rgba(0, 0, 0, 0.35);
+    animation: wall-build 260ms cubic-bezier(0.2, 1.5, 0.5, 1) both;
+  }
+  .wall.cracked { opacity: 0.72; filter: saturate(0.45) !important; }
+  .wall.hit { box-shadow: inset 0 0 0 3px #fff4bd, 0 0 14px #ffc44d; }
+  @keyframes wall-build {
+    from { opacity: 0; transform: scale(0.2); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
   .eye {
     transform-box: fill-box;
     transform-origin: center;
@@ -516,6 +536,8 @@
       this.vx = 0
       this.vy = 0
       this.shots = 0
+      this.wallsBuilt = 0
+      this.buildReadyAt = performance.now() + rand(1800, 4200)
       this.behaviorReadyAt = this.behavior === 'flee'
         ? 0
         : performance.now() + rand(2600, 5200)
@@ -634,8 +656,119 @@
   }
 
   const fighters = ROSTER.map((spec, i) => new Fighter(spec, i))
+  const walls = []
+  const MAX_WALLS = 36
   let round = 1
   let roundOver = false
+
+  // ---------- construction ----------
+  function removeWall(wall) {
+    const index = walls.indexOf(wall)
+    if (index !== -1) walls.splice(index, 1)
+    wall.el.remove()
+  }
+
+  function damageWall(wall, amount = 1) {
+    if (!walls.includes(wall)) return
+    wall.hp -= amount
+    wall.el.classList.add('hit')
+    setTimeout(() => wall.el.isConnected && wall.el.classList.remove('hit'), 120)
+    if (wall.hp <= 0) removeWall(wall)
+    else if (wall.hp === 1) wall.el.classList.add('cracked')
+  }
+
+  function clearWalls() {
+    for (const wall of walls) wall.el.remove()
+    walls.length = 0
+  }
+
+  function buildWall(builder, threat) {
+    const toward = threat
+      ? dirBetween(builder.cx(), builder.cy(), threat.cx(), threat.cy())
+      : { x: Math.random() < 0.5 ? -1 : 1, y: 0, d: 1 }
+    let vertical = Math.abs(toward.x) >= Math.abs(toward.y)
+    // Every third segment turns the corner, producing forts and maze pockets.
+    if (builder.wallsBuilt % 3 === 2) vertical = !vertical
+    const length = rand(125, 185)
+    const thickness = 24
+    const width = vertical ? thickness : length
+    const height = vertical ? length : thickness
+    const distance = builder.size * 0.4 + 58
+    const centerX = builder.cx() + toward.x * distance
+    const centerY = builder.cy() + toward.y * distance
+    const x = clamp(centerX - width / 2, 8, Math.max(8, W() - width - 8))
+    const y = clamp(centerY - height / 2, TOP_MARGIN, Math.max(TOP_MARGIN, H() - height - 8))
+
+    const el = document.createElement('div')
+    el.className = 'wall'
+    el.style.left = x + 'px'
+    el.style.top = y + 'px'
+    el.style.width = width + 'px'
+    el.style.height = height + 'px'
+    el.style.filter = `hue-rotate(${builder.slot * 34}deg)`
+    document.body.appendChild(el)
+    walls.push({
+      el,
+      builder,
+      x,
+      y,
+      width,
+      height,
+      hp: 3,
+      dieAt: performance.now() + rand(24000, 34000),
+      lastBossHitAt: 0,
+    })
+    builder.wallsBuilt++
+    builder.sparks(7)
+    builder.floatText('BUILD')
+    while (walls.length > MAX_WALLS) removeWall(walls[0])
+  }
+
+  function pointHitsWall(x, y, radius = 0) {
+    return walls.find((wall) =>
+      x >= wall.x - radius && x <= wall.x + wall.width + radius &&
+      y >= wall.y - radius && y <= wall.y + wall.height + radius)
+  }
+
+  function resolveWallCollisions(fighter, now) {
+    const radius = fighter.size * 0.28
+    let cx = fighter.cx()
+    let cy = fighter.cy()
+    for (const wall of [...walls]) {
+      const left = wall.x - radius
+      const right = wall.x + wall.width + radius
+      const top = wall.y - radius
+      const bottom = wall.y + wall.height + radius
+      if (cx <= left || cx >= right || cy <= top || cy >= bottom) continue
+
+      const exits = [
+        { distance: cx - left, axis: 'x', value: left, velocity: -80 },
+        { distance: right - cx, axis: 'x', value: right, velocity: 80 },
+        { distance: cy - top, axis: 'y', value: top, velocity: -80 },
+        { distance: bottom - cy, axis: 'y', value: bottom, velocity: 80 },
+      ]
+      const exit = exits.reduce((a, b) => (a.distance < b.distance ? a : b))
+      if (exit.axis === 'x') {
+        cx = exit.value
+        fighter.x = cx - fighter.size / 2
+        fighter.vx = exit.velocity
+      } else {
+        cy = exit.value
+        fighter.y = cy - fighter.size / 2
+        fighter.vy = exit.velocity
+      }
+      if (fighter.weapon.eats && now - wall.lastBossHitAt > 420) {
+        wall.lastBossHitAt = now
+        damageWall(wall)
+      }
+    }
+  }
+
+  function tickWalls(now) {
+    for (let i = walls.length - 1; i >= 0; i--) {
+      if (now >= walls[i].dieAt) removeWall(walls[i])
+    }
+  }
 
   // ---------- projectiles (ADAGRAD's arrows) ----------
   const projectiles = []
@@ -817,6 +950,13 @@
       p.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0) rotate(${angle}deg)`
       let dead = now > p.dieAt || p.x < -60 || p.x > W() + 60 || p.y < -60 || p.y > H() + 60
       if (!dead) {
+        const wall = pointHitsWall(p.x, p.y, p.radius || 0)
+        if (wall) {
+          damageWall(wall, p.fire ? 2 : 1)
+          dead = true
+        }
+      }
+      if (!dead) {
         for (const f of fighters) {
           if (f === p.shooter || !f.alive) continue
           if (Math.hypot(f.cx() - p.x, f.cy() - p.y) < f.size * 0.39 + p.radius) {
@@ -944,6 +1084,7 @@
     await wait(6500)
     round++
     clearProjectiles()
+    clearWalls()
     for (const f of fighters) f.reset(f.slot)
     showBanner(`ROUND ${round}<div class="sub">FIGHT</div>`, 2600)
     roundOver = false
@@ -980,8 +1121,16 @@
       switch (f.state) {
         case 'idle': {
           if (!roundOver && nearest && now >= f.stateUntil) {
+            const boss = fighters.find((fighter) => fighter.name === 'oLSTM' && fighter.alive)
             f.target = enemies[Math.floor(Math.random() * enemies.length)]
-            if (f.weapon.special && now >= f.specialReadyAt) {
+            if (now >= f.buildReadyAt) {
+              f.target = f !== boss && boss ? boss : nearest
+              f.state = 'build-windup'
+              f.stateUntil = now + rand(320, 520)
+              f.buildReadyAt = now + rand(4800, 7600)
+              f.setPose('windup')
+              f.say(f !== boss && boss ? 'fortifying against the boss!' : 'building cover!', 1700)
+            } else if (f.weapon.special && now >= f.specialReadyAt) {
               f.state = 'special-windup'
               f.stateUntil = now + f.weapon.special.windup
               f.specialReadyAt = now + rand(f.weapon.special.cooldown[0], f.weapon.special.cooldown[1])
@@ -1004,6 +1153,16 @@
               f.setPose('walking')
             }
             f.setMood(f.state === 'flee' ? 'worried' : 'excited')
+          }
+          break
+        }
+        case 'build-windup': {
+          if (now >= f.stateUntil) {
+            const threat = f.target && f.target.alive ? f.target : nearest
+            buildWall(f, threat)
+            f.state = 'recover'
+            f.stateUntil = now + rand(350, 650)
+            f.setPose('idle')
           }
           break
         }
@@ -1178,11 +1337,23 @@
         }
       }
 
+      // Everyone gives the boss extra space, using their new forts as cover.
+      const boss = fighters.find((fighter) => fighter.name === 'oLSTM' && fighter.alive)
+      if (boss && f !== boss) {
+        const awayFromBoss = dirBetween(boss.cx(), boss.cy(), f.cx(), f.cy())
+        if (awayFromBoss.d < 520) {
+          const pressure = (1 - awayFromBoss.d / 520) * 1050
+          f.vx += awayFromBoss.x * pressure * dt
+          f.vy += awayFromBoss.y * pressure * dt
+        }
+      }
+
       // integrate with friction
       f.vx *= Math.pow(0.0008, dt)
       f.vy *= Math.pow(0.0008, dt)
       f.x += f.vx * dt
       f.y += f.vy * dt
+      resolveWallCollisions(f, now)
       // soft bounce off edges
       if (f.x <= -f.size * 0.2 || f.x >= W() - f.size * 0.8) f.vx *= -0.6
       if (f.y <= TOP_MARGIN || f.y >= H() - f.size) f.vy *= -0.6
@@ -1190,6 +1361,7 @@
     }
 
     tickProjectiles(now, dt)
+    tickWalls(now)
 
     // round bookkeeping
     if (!roundOver) {
