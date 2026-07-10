@@ -20,7 +20,9 @@
     width: 160px;
     height: 162px;
     will-change: transform;
+    transition: opacity 180ms ease;
   }
+  .fighter.cloaked { opacity: 0.06; }
   .fighter .inner {
     width: 100%;
     height: 100%;
@@ -407,11 +409,11 @@
   const banner = document.getElementById('banner')
 
   const ROSTER = [
-    { name: 'SGD',      hue: 0   },
-    { name: 'ADAM',     hue: 285 },
+    { name: 'SGD',      hue: 0,   behavior: 'flee' },
+    { name: 'ADAM',     hue: 285, behavior: 'cloak' },
     { name: 'RMSPROP',  hue: 150 },
     { name: 'MOMENTUM', hue: 60  },
-    { name: 'ADAGRAD',  hue: 210 },
+    { name: 'ADAGRAD',  hue: 210, behavior: 'teleport' },
     // the learned optimizer: huge, tanky, and it EATS baselines
     { name: 'oLSTM',    hue: 320, size: 280, hpMax: 320 },
   ]
@@ -484,6 +486,7 @@
     constructor(spec, slot) {
       this.name = spec.name
       this.slot = slot
+      this.behavior = spec.behavior || null
       this.weapon = WEAPONS[spec.name]
       this.baseSize = spec.size || 160
       this.hpMax = spec.hpMax || 100
@@ -513,6 +516,9 @@
       this.vx = 0
       this.vy = 0
       this.shots = 0
+      this.behaviorReadyAt = this.behavior === 'flee'
+        ? 0
+        : performance.now() + rand(2600, 5200)
       const special = this.weapon.special
       this.specialReadyAt = special
         ? performance.now() + rand(special.cooldown[0] * 0.45, special.cooldown[1] * 0.65)
@@ -522,6 +528,7 @@
       this.x = clamp(slot * lane + rand(0, lane * 0.6), 0, Math.max(0, W() - this.size))
       this.y = rand(TOP_MARGIN, Math.max(TOP_MARGIN + 1, H() - this.size))
       this.el.classList.remove('dead')
+      this.el.classList.remove('cloaked')
       // undo an "eaten" exit
       this.el.style.display = ''
       this.el.style.transition = ''
@@ -837,6 +844,23 @@
     return fighters.filter((o) => o !== f && o.alive)
   }
 
+  function safestTeleportPosition(fighter, enemies) {
+    let best = { x: fighter.x, y: fighter.y, score: -1 }
+    for (let i = 0; i < 12; i++) {
+      const candidate = {
+        x: rand(0, Math.max(1, W() - fighter.size)),
+        y: rand(TOP_MARGIN, Math.max(TOP_MARGIN + 1, H() - fighter.size)),
+      }
+      const cx = candidate.x + fighter.size / 2
+      const cy = candidate.y + fighter.size / 2
+      const score = enemies.length
+        ? Math.min(...enemies.map((enemy) => Math.hypot(enemy.cx() - cx, enemy.cy() - cy)))
+        : Infinity
+      if (score > best.score) best = { ...candidate, score }
+    }
+    return best
+  }
+
   function showBanner(html, ms = 3000) {
     banner.innerHTML = html
     banner.classList.add('show')
@@ -852,6 +876,8 @@
     const knock = (opts.knock !== undefined ? opts.knock : w.knock) *
       (crit ? 1.6 : 1) * (160 / victim.size)
     victim.hp -= dmg
+    victim.el.classList.remove('cloaked')
+    victim.inner.style.opacity = '1'
     victim.updateHp()
     victim.sparks(crit ? 12 : 7, opts.sparkClass || (opts.fire ? 'fire' : ''))
     victim.floatText((crit ? 'CRIT −' : '−') + dmg, crit ? 'crit' : '')
@@ -961,11 +987,23 @@
               f.specialReadyAt = now + rand(f.weapon.special.cooldown[0], f.weapon.special.cooldown[1])
               f.setPose('windup')
               f.say(['geyser', 'tsunami', 'trees'].includes(f.weapon.special.type) ? 'global optimization.' : 'warming up…', 1800)
+            } else if (f.behavior === 'flee') {
+              f.state = 'flee'
+              f.setPose('walking')
+              f.setMood('worried')
+              f.say('negative expected value!', 1600)
+            } else if (f.behavior === 'cloak' && now >= f.behaviorReadyAt) {
+              f.state = 'cloak'
+              f.stateUntil = now + 1800
+              f.behaviorReadyAt = now + rand(6500, 10000)
+              f.el.classList.add('cloaked')
+              f.setPose('walking')
+              f.say('dropout enabled.', 1500)
             } else {
               f.state = 'chase'
               f.setPose('walking')
             }
-            f.setMood('excited')
+            f.setMood(f.state === 'flee' ? 'worried' : 'excited')
           }
           break
         }
@@ -981,13 +1019,76 @@
           }
           break
         }
+        case 'flee': {
+          let awayX = 0
+          let awayY = 0
+          for (const enemy of enemies) {
+            const away = dirBetween(enemy.cx(), enemy.cy(), f.cx(), f.cy())
+            const weight = 1 / Math.max(80, away.d)
+            awayX += away.x * weight
+            awayY += away.y * weight
+          }
+          let magnitude = Math.hypot(awayX, awayY)
+          if (magnitude < 0.001) {
+            const fromCenter = dirBetween(W() / 2, H() / 2, f.cx(), f.cy())
+            awayX = fromCenter.x
+            awayY = fromCenter.y
+            magnitude = 1
+          }
+          f.vx += (awayX / magnitude) * 1900 * dt
+          f.vy += (awayY / magnitude) * 1900 * dt
+          f.inner.style.transform = `rotate(${clamp((awayX / magnitude) * 8, -8, 8)}deg)`
+          if (f.weapon.special && now >= f.specialReadyAt) {
+            f.state = 'idle'
+            f.stateUntil = now
+          }
+          break
+        }
+        case 'cloak': {
+          if (nearest) {
+            const away = dirBetween(nearest.cx(), nearest.cy(), f.cx(), f.cy())
+            f.vx += away.x * 1550 * dt
+            f.vy += away.y * 1550 * dt
+          }
+          if (now >= f.stateUntil) {
+            f.el.classList.remove('cloaked')
+            f.state = 'recover'
+            f.stateUntil = now + 350
+            f.setPose('idle')
+            f.setMood('neutral')
+          }
+          break
+        }
+        case 'teleport': {
+          if (now >= f.stateUntil) {
+            const destination = safestTeleportPosition(f, enemies)
+            f.x = destination.x
+            f.y = destination.y
+            f.place()
+            f.inner.style.opacity = '1'
+            f.sparks(12)
+            f.floatText('ε-jump')
+            f.state = 'recover'
+            f.stateUntil = now + 450
+            f.setPose('idle')
+          }
+          break
+        }
         case 'chase': {
           const t = f.target
           if (!t || !t.alive) { f.state = 'idle'; f.setPose('idle'); break }
           const dir = dirBetween(f.cx(), f.cy(), t.cx(), t.cy())
           const attackRange = f.weapon.ranged ? f.weapon.range : (f.size + t.size) * 0.48
           const accel = 1400 * (160 / f.size) // the big one lumbers
-          if (f.weapon.ranged && dir.d < f.weapon.tooClose) {
+          if (f.behavior === 'teleport' && dir.d < f.weapon.tooClose && now >= f.behaviorReadyAt) {
+            f.state = 'teleport'
+            f.stateUntil = now + 260
+            f.behaviorReadyAt = now + rand(5200, 8500)
+            f.vx = 0
+            f.vy = 0
+            f.inner.style.opacity = '0'
+            f.say('exploring elsewhere!', 1500)
+          } else if (f.weapon.ranged && dir.d < f.weapon.tooClose) {
             // archer kites: back away from anyone in melee range
             f.vx -= dir.x * 1200 * dt
             f.vy -= dir.y * 1200 * dt
