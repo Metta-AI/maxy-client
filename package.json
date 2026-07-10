@@ -1,0 +1,13 @@
+{
+  "name": "maxy",
+  "version": "0.1.0",
+  "description": "Maxy — the Softmax logo, awakened. A Clippy-style desktop companion for the office screen.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "bg": "nohup electron . > /tmp/maxy.log 2>&1 &"
+  },
+  "devDependencies": {
+    "electron": "^37.0.0"
+  }
+}
