@@ -35,7 +35,7 @@ The menu-bar tray (❊ maxy) has commands: _Say something_, _Do a trick_, _Gradi
 
 ### Battle mode
 
-Set `MAXY_MODE=battle` to run the optimizer arena instead of the desktop companion. ADAGRAD periodically breathes ranged fireballs with collision damage, while oLSTM unleashes a rarer screen-wide inferno geyser that damages every living opponent. On multi-display Macs, set `MAXY_DISPLAY=left` or `MAXY_DISPLAY=right` to choose the screen.
+Set `MAXY_MODE=battle` to run the optimizer arena instead of the desktop companion. Fighters periodically unleash distinct specials: SGD sweeps the screen with a damaging tsunami, RMSPROP sprouts five collision-damage trees, MOMENTUM throws a three-snowball volley, ADAGRAD breathes ranged fireballs, and oLSTM fires a screen-wide inferno geyser that damages every living opponent. On multi-display Macs, set `MAXY_DISPLAY=left` or `MAXY_DISPLAY=right` to choose the screen.
 
 The main-room setup can also run fully local speech echo. Start each client with a distinct `MAXY_ECHO_PORT`, then run `./echo_start.sh`; the on-device transcriber posts recognized speech to both clients, where a random living fighter repeats it. Audio chunks and transcripts are discarded rather than stored. The listener expects Homebrew `ffmpeg` and `whisper-cli`, with its model at `~/maxy-echo/models/ggml-base.en.bin` by default.
 

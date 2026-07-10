@@ -141,6 +141,61 @@
     100% { opacity: 0; transform: scaleX(1) scaleY(0.2); }
   }
 
+  .tsunami {
+    position: absolute;
+    inset: -8vh -20vw;
+    pointer-events: none;
+    z-index: 10;
+    background:
+      radial-gradient(ellipse at 55% 18%, rgba(235, 252, 255, 0.95) 0 5%, transparent 18%),
+      linear-gradient(180deg, rgba(150, 230, 255, 0.15), rgba(24, 142, 210, 0.92) 36%, #0a5c9d 72%, rgba(8, 43, 92, 0.95));
+    clip-path: polygon(0 23%, 8% 12%, 16% 22%, 25% 7%, 34% 20%, 43% 4%, 53% 21%, 63% 9%, 73% 24%, 84% 5%, 93% 18%, 100% 8%, 100% 100%, 0 100%);
+    filter: drop-shadow(0 -12px 28px rgba(200, 247, 255, 0.95));
+    animation: tsunami-sweep 1.8s ease-in-out forwards;
+  }
+  @keyframes tsunami-sweep {
+    0% { opacity: 0; transform: translateX(-75%) scaleY(0.45); }
+    22% { opacity: 1; transform: translateX(-18%) scaleY(0.8); }
+    52% { opacity: 1; transform: translateX(0) scaleY(1.05); }
+    100% { opacity: 0; transform: translateX(65%) scaleY(0.85); }
+  }
+
+  .damage-tree {
+    position: absolute;
+    z-index: 11;
+    width: 150px;
+    height: 180px;
+    margin: -150px 0 0 -75px;
+    font-size: 140px;
+    line-height: 180px;
+    text-align: center;
+    pointer-events: none;
+    filter: drop-shadow(0 7px 7px rgba(20, 50, 10, 0.65));
+    transform-origin: 50% 100%;
+    animation: tree-sprout 1.7s ease-out forwards;
+  }
+  @keyframes tree-sprout {
+    0% { opacity: 0; transform: scaleY(0.02) scaleX(0.35); }
+    28% { opacity: 1; transform: scaleY(1.12) scaleX(0.9); }
+    48% { transform: scaleY(0.94) scaleX(1.05); }
+    78% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.92); }
+  }
+
+  .snowball {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 52px;
+    height: 52px;
+    margin: -26px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 12;
+    background: radial-gradient(circle at 34% 28%, #ffffff 0 18%, #d9f3ff 48%, #91cbe8 76%, #5e9fc8 100%);
+    box-shadow: inset -7px -8px 8px rgba(38, 102, 148, 0.28), 0 0 12px rgba(215, 249, 255, 0.95);
+  }
+
   .eye {
     transform-box: fill-box;
     transform-origin: center;
@@ -257,6 +312,9 @@
     background: #ffd84a;
     box-shadow: 0 0 14px 5px rgba(255, 62, 0, 0.95);
   }
+  .spark.water { background: #b9f2ff; box-shadow: 0 0 14px 5px rgba(31, 154, 224, 0.85); }
+  .spark.leaf { background: #8cc95f; box-shadow: 0 0 12px 4px rgba(45, 109, 28, 0.8); }
+  .spark.snow { background: #f7fdff; box-shadow: 0 0 14px 5px rgba(152, 222, 255, 0.95); }
   @keyframes sparkfly {
     from { opacity: 1; transform: translate(0, 0) scale(1); }
     to   { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
@@ -363,10 +421,16 @@
   // ADAM winds up fast (adaptive), RMSPROP hits like a truck but slowly,
   // MOMENTUM's dash carries far, ADAGRAD is ranged with per-shot damage decay.
   const WEAPONS = {
-    SGD:      { emoji: '🏏', windup: 420, dashSpeed: 1150, dashMs: 320, dmg: [8, 15],  knock: 550 },
+    SGD:      { emoji: '🏏', windup: 420, dashSpeed: 1150, dashMs: 320, dmg: [8, 15],  knock: 550,
+                special: { type: 'tsunami', windup: 850, cooldown: [11000, 17000],
+                           dmg: [10, 18], knock: 520 } },
     ADAM:     { emoji: '⚔️', windup: 200, dashSpeed: 1250, dashMs: 280, dmg: [6, 11],  knock: 420 },
-    RMSPROP:  { emoji: '🔨', windup: 700, dashSpeed: 1000, dashMs: 360, dmg: [14, 23], knock: 900 },
-    MOMENTUM: { emoji: '🔱', windup: 380, dashSpeed: 1550, dashMs: 460, dmg: [9, 16],  knock: 750 },
+    RMSPROP:  { emoji: '🔨', windup: 700, dashSpeed: 1000, dashMs: 360, dmg: [14, 23], knock: 900,
+                special: { type: 'trees', windup: 700, cooldown: [9000, 14000],
+                           dmg: [12, 20], knock: 480 } },
+    MOMENTUM: { emoji: '🔱', windup: 380, dashSpeed: 1550, dashMs: 460, dmg: [9, 16],  knock: 750,
+                special: { type: 'snowball', windup: 520, cooldown: [6500, 10000],
+                           speed: 880, dmg: [8, 14], knock: 540 } },
     ADAGRAD:  { emoji: '🏹', windup: 520, ranged: true, range: 430, tooClose: 220,
                 arrowSpeed: 950, dmgStart: 16, dmgDecay: 1.5, dmgMin: 4, knock: 450,
                 special: { type: 'fireball', windup: 650, cooldown: [5200, 8200],
@@ -640,6 +704,98 @@
     setTimeout(() => el.remove(), 1900)
   }
 
+  function summonTsunami(shooter) {
+    const special = shooter.weapon.special
+    const el = document.createElement('div')
+    el.className = 'tsunami'
+    document.body.appendChild(el)
+    shooter.say('full-batch gradient!', 2200)
+    for (const [i, victim] of livingEnemies(shooter).entries()) {
+      setTimeout(() => {
+        if (!victim.alive) return
+        hit(shooter, victim, {
+          dmg: rand(special.dmg[0], special.dmg[1]),
+          knock: special.knock,
+          dir: { x: 0.9, y: -0.35 },
+          sparkClass: 'water',
+        })
+      }, 360 + i * 70)
+    }
+    setTimeout(() => el.remove(), 1900)
+  }
+
+  function sproutTrees(shooter) {
+    const special = shooter.weapon.special
+    const enemies = livingEnemies(shooter)
+    const struck = new Set()
+    shooter.say('random forest!', 2100)
+    for (let i = 0; i < 5; i++) {
+      const target = enemies[i % Math.max(1, enemies.length)]
+      const x = target ? target.cx() : ((i + 0.5) / 5) * W()
+      const y = target ? target.cy() + target.size * 0.35 : H() * 0.72
+      const tree = document.createElement('div')
+      tree.className = 'damage-tree'
+      tree.textContent = '🌲'
+      tree.style.left = x + 'px'
+      tree.style.top = y + 'px'
+      document.body.appendChild(tree)
+      setTimeout(() => {
+        for (const victim of livingEnemies(shooter)) {
+          if (struck.has(victim)) continue
+          if (Math.hypot(victim.cx() - x, victim.cy() - y) < 145) {
+            struck.add(victim)
+            hit(shooter, victim, {
+              dmg: rand(special.dmg[0], special.dmg[1]),
+              knock: special.knock,
+              dir: { x: rand(-0.35, 0.35), y: -1 },
+              sparkClass: 'leaf',
+            })
+          }
+        }
+      }, 300 + i * 55)
+      setTimeout(() => tree.remove(), 1800)
+    }
+  }
+
+  function launchSnowball(shooter, target, angleOffset = 0) {
+    if (!target || !target.alive) return
+    const special = shooter.weapon.special
+    const base = Math.atan2(target.cy() - shooter.cy(), target.cx() - shooter.cx()) + angleOffset
+    const el = document.createElement('div')
+    el.className = 'snowball'
+    document.body.appendChild(el)
+    projectiles.push({
+      el,
+      shooter,
+      dmg: rand(special.dmg[0], special.dmg[1]),
+      knock: special.knock,
+      sparkClass: 'snow',
+      x: shooter.cx(),
+      y: shooter.cy(),
+      vx: Math.cos(base) * special.speed,
+      vy: Math.sin(base) * special.speed,
+      radius: 24,
+      dieAt: performance.now() + 2400,
+    })
+  }
+
+  function throwSnowballs(shooter, target) {
+    shooter.say('variance reduction!', 1900)
+    for (const [i, offset] of [-0.1, 0, 0.1].entries()) {
+      setTimeout(() => launchSnowball(shooter, target, offset), i * 130)
+    }
+  }
+
+  function useSpecial(shooter, target) {
+    switch (shooter.weapon.special.type) {
+      case 'fireball': fireBreath(shooter, target); break
+      case 'geyser': fireGeyser(shooter); break
+      case 'tsunami': summonTsunami(shooter); break
+      case 'trees': sproutTrees(shooter); break
+      case 'snowball': throwSnowballs(shooter, target); break
+    }
+  }
+
   function clearProjectiles() {
     for (const p of projectiles) p.el.remove()
     projectiles.length = 0
@@ -663,6 +819,7 @@
               knock: p.knock,
               dir: { x: p.vx / speed, y: p.vy / speed },
               fire: p.fire,
+              sparkClass: p.sparkClass,
             })
             dead = true
             break
@@ -696,7 +853,7 @@
       (crit ? 1.6 : 1) * (160 / victim.size)
     victim.hp -= dmg
     victim.updateHp()
-    victim.sparks(crit ? 12 : 7, opts.fire ? 'fire' : '')
+    victim.sparks(crit ? 12 : 7, opts.sparkClass || (opts.fire ? 'fire' : ''))
     victim.floatText((crit ? 'CRIT −' : '−') + dmg, crit ? 'crit' : '')
     const dir = opts.dir || dirBetween(attacker.cx(), attacker.cy(), victim.cx(), victim.cy())
     victim.vx += dir.x * knock
@@ -803,7 +960,7 @@
               f.stateUntil = now + f.weapon.special.windup
               f.specialReadyAt = now + rand(f.weapon.special.cooldown[0], f.weapon.special.cooldown[1])
               f.setPose('windup')
-              f.say(f.weapon.special.type === 'geyser' ? 'global optimization.' : 'warming up…', 1800)
+              f.say(['geyser', 'tsunami', 'trees'].includes(f.weapon.special.type) ? 'global optimization.' : 'warming up…', 1800)
             } else {
               f.state = 'chase'
               f.setPose('walking')
@@ -816,8 +973,7 @@
           if (now >= f.stateUntil) {
             const target = f.target
             if (target && target.alive) {
-              if (f.weapon.special.type === 'geyser') fireGeyser(f)
-              else fireBreath(f, target)
+              useSpecial(f, target)
             }
             f.state = 'recover'
             f.stateUntil = now + rand(800, 1300)
