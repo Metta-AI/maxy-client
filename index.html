@@ -17,8 +17,8 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 150px;
-    height: 152px;
+    width: 220px;
+    height: 223px;
     will-change: transform;
   }
 
@@ -86,15 +86,15 @@
     bottom: calc(100% + 14px);
     left: 50%;
     transform: translateX(-50%) translateY(6px);
-    max-width: 340px;
-    min-width: 120px;
+    max-width: 420px;
+    min-width: 140px;
     width: max-content;
     background: #fffaf0;
     color: #111827;
     border: 1px solid #e4dac8;
     border-radius: 10px;
-    padding: 10px 14px;
-    font: 15px/1.45 Georgia, 'Iowan Old Style', serif;
+    padding: 12px 16px;
+    font: 18px/1.5 Georgia, 'Iowan Old Style', serif;
     box-shadow: 0 3px 14px rgba(14, 39, 88, 0.10);
     opacity: 0;
     pointer-events: none;
@@ -197,8 +197,8 @@
 
   const W = () => window.innerWidth
   const H = () => window.innerHeight
-  const SIZE = 150
-  const TOP_MARGIN = 110 // room for the speech bubble
+  const SIZE = 220
+  const TOP_MARGIN = 140 // room for the speech bubble
 
   const state = {
     x: 0, y: 0,
@@ -237,7 +237,7 @@
     const dx = state.cursor.x - cx
     const dy = state.cursor.y - cy
     const d = Math.hypot(dx, dy) || 1
-    const k = Math.min(7, d / 30)
+    const k = Math.min(10, d / 30)
     const ox = (dx / d) * k
     const oy = (dy / d) * k
     for (const p of document.querySelectorAll('.pupil, .glint')) {
@@ -273,8 +273,8 @@
     const f = document.createElement('div')
     f.className = 'float ' + cls
     f.textContent = txt
-    f.style.left = rand(30, 90) + 'px'
-    f.style.top = '-6px'
+    f.style.left = rand(44, 132) + 'px'
+    f.style.top = '-8px'
     el.appendChild(f)
     setTimeout(() => f.remove(), 1500)
   }
