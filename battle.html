@@ -943,6 +943,19 @@
     requestAnimationFrame(tick)
   }
 
+  // ---------- echo mode: the room speaks, a Maxy repeats it ----------
+  // Text arrives from the on-device transcriber via the main process. A random
+  // living fighter says it in its bubble, then it is gone — nothing is stored.
+  if (window.maxyBridge && window.maxyBridge.onEcho) {
+    window.maxyBridge.onEcho((text) => {
+      const living = fighters.filter((f) => f.alive)
+      const pool = living.length ? living : fighters
+      const fighter = pool[Math.floor(Math.random() * pool.length)]
+      fighter.say('“' + text + '”', 4600)
+      fighter.floatText('🗣')
+    })
+  }
+
   // ---------- kickoff ----------
   ;(async function start() {
     // wait for a real viewport (Electron can fire the first layout at 0×0),

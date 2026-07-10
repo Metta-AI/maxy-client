@@ -1,9 +1,37 @@
 const path = require('path')
+const http = require('http')
 const { app, BrowserWindow, Tray, Menu, screen, ipcMain, nativeImage } = require('electron')
 
 let win = null
 let tray = null
 let paused = false
+let echoServer = null
+
+// Echo mode: a local-only HTTP receiver. The on-device transcriber POSTs
+// recognized speech here and we hand it to the renderer, where a Maxy speaks
+// it. Text is never stored, only relayed to the window and then dropped.
+function startEchoServer() {
+  const port = Number(process.env.MAXY_ECHO_PORT || 0)
+  if (!port) return
+  echoServer = http.createServer((req, res) => {
+    if (req.method !== 'POST' || req.url !== '/echo') {
+      res.writeHead(404).end()
+      return
+    }
+    let body = ''
+    req.on('data', (chunk) => {
+      body += chunk
+      if (body.length > 4096) req.destroy()
+    })
+    req.on('end', () => {
+      const text = body.toString().trim().slice(0, 240)
+      if (text && win && !win.isDestroyed()) win.webContents.send('echo', text)
+      res.writeHead(204).end()
+    })
+  })
+  echoServer.on('error', (error) => console.log('echo server error:', error.message))
+  echoServer.listen(port, '127.0.0.1', () => console.log('echo listening on 127.0.0.1:' + port))
+}
 
 function pickDisplay() {
   const pick = (process.env.MAXY_DISPLAY || 'primary').toLowerCase()
@@ -95,6 +123,7 @@ app.whenReady().then(() => {
   if (app.dock) app.dock.hide()
   createWindow()
   createTray()
+  startEchoServer()
 })
 
 app.on('window-all-closed', () => app.quit())
