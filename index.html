@@ -331,6 +331,7 @@
   const bridge = window.maxyBridge || {
     onCursor: () => {},
     onCommand: () => {},
+    onEcho: () => {},
     setInteractive: () => {},
   }
 
@@ -881,6 +882,18 @@
     if (!fn) return
     if (cmd === 'pause' || cmd === 'resume') fn()
     else runExclusive(fn)
+  })
+
+  // ---------- echo: the room speaks, Maxy repeats it ----------
+  bridge.onEcho((text) => {
+    const safe = String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    setMood('excited')
+    say('“' + safe + '”', 4600)
+    floatText('🗣')
+    setTimeout(() => setMood('neutral'), 2500)
   })
 
   // ---------- main loop ----------
