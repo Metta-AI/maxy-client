@@ -152,9 +152,142 @@
     from { opacity: 1; transform: translateY(0) rotate(0deg); }
     to   { opacity: 0; transform: translateY(-56px) rotate(12deg); }
   }
+
+  /* ---- ranged fire effects ---- */
+  #effects {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  #effects::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 92, 12, 0.16);
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+  #effects.inferno-active::after { opacity: 1; }
+
+  .fireball {
+    position: absolute;
+    z-index: 4;
+    width: 58px;
+    height: 42px;
+    margin: -21px 0 0 -29px;
+    border-radius: 52% 70% 52% 70%;
+    background: radial-gradient(circle at 67% 50%, #fff7a8 0 13%, #ffc329 26%, #ff5c0c 54%, #b51c00 75%, transparent 77%);
+    filter: drop-shadow(0 0 9px #ff8a00) drop-shadow(0 0 18px rgba(255, 35, 0, 0.8));
+  }
+  .fireball::before {
+    content: '';
+    position: absolute;
+    right: 62%;
+    top: 3px;
+    width: 72px;
+    height: 35px;
+    background: linear-gradient(90deg, transparent, rgba(255, 65, 0, 0.3) 24%, #ff7417 64%, #ffd94f);
+    clip-path: polygon(0 18%, 34% 39%, 4% 62%, 45% 74%, 100% 50%);
+  }
+
+  .ember {
+    position: absolute;
+    z-index: 3;
+    width: 9px;
+    height: 9px;
+    margin: -4px;
+    border-radius: 50% 0 50% 50%;
+    background: #ffd84a;
+    box-shadow: 0 0 8px #ff4a00;
+    animation: ember-fly 720ms ease-out forwards;
+  }
+  @keyframes ember-fly {
+    from { opacity: 1; transform: translate(0, 0) rotate(45deg) scale(var(--ember-scale, 1)); }
+    to { opacity: 0; transform: translate(var(--ember-x), var(--ember-y)) rotate(180deg) scale(0.2); }
+  }
+
+  .fire-burst {
+    position: absolute;
+    z-index: 5;
+    width: 44px;
+    height: 44px;
+    margin: -22px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fffbd0 0 8%, #ffd129 22%, #ff5c0c 46%, rgba(178, 21, 0, 0.72) 61%, transparent 70%);
+    filter: drop-shadow(0 0 18px #ff3c00);
+    animation: fire-burst 620ms ease-out forwards;
+  }
+  @keyframes fire-burst {
+    from { opacity: 1; transform: scale(0.25); }
+    55% { opacity: 1; transform: scale(2.8); }
+    to { opacity: 0; transform: scale(3.7); }
+  }
+
+  .scorch {
+    position: absolute;
+    z-index: 1;
+    width: 76px;
+    height: 38px;
+    margin: -19px 0 0 -38px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(35, 12, 7, 0.72), rgba(126, 31, 8, 0.42) 38%, transparent 72%);
+    mix-blend-mode: multiply;
+    animation: scorch-fade 5.2s ease-out forwards;
+  }
+  @keyframes scorch-fade {
+    0%, 65% { opacity: 0.82; transform: scale(0.7); }
+    12% { transform: scale(1); }
+    to { opacity: 0; transform: scale(1.1); }
+  }
+
+  .damage-number {
+    position: absolute;
+    z-index: 7;
+    color: #fff4b8;
+    font: 900 22px/1 ui-monospace, 'SF Mono', monospace;
+    text-shadow: 0 2px 0 #921b00, 0 0 8px #ff3d00;
+    animation: damage-pop 1.15s ease-out forwards;
+  }
+  @keyframes damage-pop {
+    from { opacity: 0; transform: translate(-50%, 8px) scale(0.55); }
+    20% { opacity: 1; transform: translate(-50%, -8px) scale(1.2); }
+    to { opacity: 0; transform: translate(-50%, -58px) scale(0.9); }
+  }
+
+  .fire-geyser {
+    position: absolute;
+    z-index: 3;
+    height: 164px;
+    margin-top: -82px;
+    transform-origin: 0 50%;
+    background:
+      radial-gradient(ellipse at 8% 50%, #fffbd0 0 3%, #ffd129 12%, transparent 28%),
+      linear-gradient(180deg, transparent 4%, rgba(255, 75, 0, 0.72) 17%, #ffbd24 37%, #fff4a1 49%, #ff9d11 61%, rgba(220, 31, 0, 0.78) 82%, transparent 96%);
+    clip-path: polygon(0 42%, 7% 24%, 19% 16%, 32% 5%, 46% 17%, 60% 2%, 73% 14%, 87% 5%, 100% 23%, 96% 48%, 100% 76%, 83% 90%, 67% 82%, 53% 98%, 38% 84%, 24% 94%, 10% 75%, 0 59%);
+    filter: drop-shadow(0 0 15px #ff3b00) drop-shadow(0 0 32px rgba(255, 95, 0, 0.9));
+    animation: geyser-roar 2.35s ease-in-out forwards;
+  }
+  .fire-geyser::after {
+    content: '';
+    position: absolute;
+    inset: 34% 0;
+    background: linear-gradient(90deg, #fffde0, #ffd34a 35%, #fff8bc 62%, #ffbd21);
+    filter: blur(5px);
+  }
+  @keyframes geyser-roar {
+    0% { opacity: 0; transform: scaleX(0.02) scaleY(0.25); }
+    12% { opacity: 1; transform: scaleX(1) scaleY(0.72); }
+    28% { transform: scaleX(1) scaleY(1.08); }
+    42% { transform: scaleX(1) scaleY(0.9); }
+    58% { transform: scaleX(1) scaleY(1.13); }
+    76% { opacity: 1; transform: scaleX(1) scaleY(0.96); }
+    100% { opacity: 0; transform: scaleX(1) scaleY(0.2); }
+  }
 </style>
 </head>
 <body>
+<div id="effects" aria-hidden="true"></div>
 <div id="maxy" class="idle facehidden">
   <div id="bubble"></div>
   <div id="inner">
@@ -194,6 +327,12 @@
   const inner = document.getElementById('inner')
   const face = document.getElementById('face')
   const bubble = document.getElementById('bubble')
+  const effects = document.getElementById('effects')
+  const bridge = window.maxyBridge || {
+    onCursor: () => {},
+    onCommand: () => {},
+    setInteractive: () => {},
+  }
 
   const W = () => window.innerWidth
   const H = () => window.innerHeight
@@ -336,6 +475,131 @@
     })
   }
 
+  // ---------- ranged fire ----------
+  function maxyMouth() {
+    return { x: state.x + SIZE * 0.47, y: state.y + SIZE * 0.35 }
+  }
+
+  function spawnEmber(x, y, spread = 38) {
+    const ember = document.createElement('div')
+    ember.className = 'ember'
+    ember.style.left = x + 'px'
+    ember.style.top = y + 'px'
+    ember.style.setProperty('--ember-x', rand(-spread, spread) + 'px')
+    ember.style.setProperty('--ember-y', rand(-spread, spread * 0.45) + 'px')
+    ember.style.setProperty('--ember-scale', rand(0.45, 1.3))
+    effects.appendChild(ember)
+    setTimeout(() => ember.remove(), 760)
+  }
+
+  function markFireDamage(x, y, amount = Math.round(rand(18, 42))) {
+    const scorch = document.createElement('div')
+    scorch.className = 'scorch'
+    scorch.style.left = x + 'px'
+    scorch.style.top = y + 'px'
+    scorch.style.transform = `rotate(${rand(-18, 18)}deg) scale(${rand(0.7, 1.25)})`
+    effects.appendChild(scorch)
+    setTimeout(() => scorch.remove(), 5300)
+
+    const damage = document.createElement('div')
+    damage.className = 'damage-number'
+    damage.textContent = '-' + amount
+    damage.style.left = x + 'px'
+    damage.style.top = y + 'px'
+    effects.appendChild(damage)
+    setTimeout(() => damage.remove(), 1200)
+  }
+
+  function burstFire(x, y, radius = 55) {
+    const burst = document.createElement('div')
+    burst.className = 'fire-burst'
+    burst.style.left = x + 'px'
+    burst.style.top = y + 'px'
+    effects.appendChild(burst)
+    for (let i = 0; i < 14; i++) spawnEmber(x, y, radius)
+    for (let i = 0; i < 3; i++) markFireDamage(x + rand(-radius, radius), y + rand(-radius * 0.45, radius * 0.45))
+    setTimeout(() => burst.remove(), 680)
+  }
+
+  async function launchFireball(tx, ty) {
+    const from = maxyMouth()
+    const dx = tx - from.x
+    const dy = ty - from.y
+    const distance = Math.hypot(dx, dy)
+    const fireball = document.createElement('div')
+    fireball.className = 'fireball'
+    fireball.style.left = from.x + 'px'
+    fireball.style.top = from.y + 'px'
+    fireball.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`
+    effects.appendChild(fireball)
+
+    let progress = 0
+    const embers = setInterval(() => {
+      progress = Math.min(1, progress + 0.055)
+      spawnEmber(from.x + dx * progress, from.y + dy * progress, 25)
+    }, 42)
+    const flight = fireball.animate(
+      [{ left: from.x + 'px', top: from.y + 'px' }, { left: tx + 'px', top: ty + 'px' }],
+      { duration: clamp(distance * 1.45, 520, 1250), easing: 'cubic-bezier(.18,.72,.3,1)', fill: 'forwards' }
+    )
+    await flight.finished
+    clearInterval(embers)
+    fireball.remove()
+    burstFire(tx, ty)
+  }
+
+  async function rangedFireBreath() {
+    setMood('excited')
+    let tx = state.cursor.x
+    let ty = state.cursor.y
+    const mouth = maxyMouth()
+    if (tx < 0 || tx > W() || ty < 0 || ty > H() || Math.hypot(tx - mouth.x, ty - mouth.y) < 260) {
+      tx = mouth.x < W() / 2 ? W() - 90 : 90
+      ty = rand(TOP_MARGIN + 40, H() - 80)
+    }
+    say('Remote reward delivery!', 2100)
+    await wait(420)
+    await launchFireball(tx, ty)
+    await wait(620)
+    setMood('neutral')
+  }
+
+  async function infernoGeyser() {
+    const attackY = clamp(rand(TOP_MARGIN + 20, H() - SIZE + 20), TOP_MARGIN, H() - SIZE)
+    await moveTo(18, attackY, 420)
+    setMood('excited')
+    say('Temperature parameter: ∞', 2500)
+    await wait(620)
+
+    const from = maxyMouth()
+    const geyser = document.createElement('div')
+    geyser.className = 'fire-geyser'
+    geyser.style.left = from.x + 'px'
+    geyser.style.top = from.y + 'px'
+    geyser.style.width = W() - from.x + 80 + 'px'
+    effects.appendChild(geyser)
+    effects.classList.add('inferno-active')
+
+    const emberRain = setInterval(() => {
+      spawnEmber(rand(from.x, W()), from.y + rand(-72, 72), 54)
+    }, 34)
+    const columns = Math.max(9, Math.ceil((W() - from.x) / 105))
+    for (let i = 0; i < columns; i++) {
+      const x = from.x + ((i + 0.45) / columns) * (W() - from.x)
+      for (const yOffset of [-50, 0, 50]) {
+        setTimeout(() => markFireDamage(x + rand(-24, 24), from.y + yOffset + rand(-15, 15), Math.round(rand(35, 88))), 250 + i * 35)
+      }
+    }
+
+    await wait(2300)
+    clearInterval(emberRain)
+    effects.classList.remove('inferno-active')
+    geyser.remove()
+    say('Area-of-effect seems… effective.', 3000)
+    await wait(850)
+    setMood('neutral')
+  }
+
   // ---------- the policy (an actual softmax, naturally) ----------
   const ACTIONS = [
     { name: 'quip',     logit: 2.5, fn: doQuip },
@@ -345,8 +609,10 @@
     { name: 'explore',  logit: 0.7, fn: epsilonTeleport },
     { name: 'peek',     logit: 0.7, fn: edgePeek },
     { name: 'logoform', logit: 0.6, fn: logoForm },
+    { name: 'fireball', logit: 0.6, fn: rangedFireBreath },
     { name: 'spin',     logit: 0.5, fn: entropySpin },
     { name: 'nan',      logit: 0.4, fn: nanPanic },
+    { name: 'inferno',  logit: 0.16, fn: infernoGeyser },
   ]
   function softmax(logits, temp = 1) {
     const m = Math.max(...logits)
@@ -543,7 +809,7 @@
   }
 
   // ---------- interactivity (hover / click / drag) ----------
-  window.maxyBridge.onCursor((p) => {
+  bridge.onCursor((p) => {
     if (Math.hypot(p.x - state.cursor.x, p.y - state.cursor.y) > 4) state.lastCursorMove = Date.now()
     state.cursor = p
     updatePupils()
@@ -553,7 +819,7 @@
     const want = over || state.dragging
     if (want !== state.interactive) {
       state.interactive = want
-      window.maxyBridge.setInteractive(want)
+      bridge.setInteractive(want)
     }
   })
 
@@ -595,12 +861,26 @@
     gradient: gradientDescent,
     policy: async () => showPolicy(),
     incognito: goIncognito,
+    fireball: rangedFireBreath,
+    inferno: infernoGeyser,
     pause: async () => { state.paused = true; say('Paused. Frozen policy, wandering thoughts.', 2600) },
     resume: async () => { state.paused = false; say('Unpaused. The rollout continues.', 2400) },
   }
-  window.maxyBridge.onCommand((cmd) => {
+  async function runExclusive(fn) {
+    if (state.busy) return
+    state.busy = true
+    try {
+      await fn()
+    } finally {
+      state.busy = false
+    }
+  }
+
+  bridge.onCommand((cmd) => {
     const fn = COMMANDS[cmd]
-    if (fn) fn()
+    if (!fn) return
+    if (cmd === 'pause' || cmd === 'resume') fn()
+    else runExclusive(fn)
   })
 
   // ---------- main loop ----------
@@ -609,13 +889,13 @@
     await wait(1800)
     await awaken('maxy online. objective: vibes.')
     while (true) {
-      if (state.paused || state.dragging) { await wait(600); continue }
+      if (state.paused || state.dragging || state.busy) { await wait(600); continue }
       if (Date.now() - state.lastCursorMove > 300000) {
         await sleep()
         continue
       }
       const action = sampleAction()
-      await action.fn()
+      await runExclusive(action.fn)
       await wait(rand(3000, 8000))
     }
   })()

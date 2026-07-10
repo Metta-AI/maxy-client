@@ -60,6 +60,8 @@ function createTray() {
         { label: 'Say something', click: () => send('quip') },
         { label: 'Do a trick', click: () => send('trick') },
         { label: 'Gradient descent', click: () => send('gradient') },
+        { label: 'Breathe fire', click: () => send('fireball') },
+        { label: 'Inferno geyser', click: () => send('inferno') },
         { label: 'Show policy', click: () => send('policy') },
         { label: 'Go incognito', click: () => send('incognito') },
         { type: 'separator' },
