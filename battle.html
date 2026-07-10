@@ -1,0 +1,975 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    user-select: none;
+    cursor: default;
+  }
+
+  .fighter {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 160px;
+    height: 162px;
+    will-change: transform;
+  }
+  .fighter .inner {
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.5s ease;
+  }
+  .fighter .bob { width: 100%; height: 100%; }
+
+  .fighter.idle .bob    { animation: bob 3.2s ease-in-out infinite; }
+  .fighter.walking .bob { animation: waddle 0.45s ease-in-out infinite; }
+  .fighter.windup .bob  { animation: shake 0.1s linear infinite; }
+  .fighter.dead .bob    { animation: none; }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+  }
+  @keyframes waddle {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50%      { transform: translateY(-8px) rotate(4deg); }
+  }
+  @keyframes shake {
+    0%   { transform: translate(-3px, 2px) rotate(-2deg); }
+    50%  { transform: translate(3px, -2px) rotate(2deg); }
+    100% { transform: translate(-2px, 1px) rotate(-1deg); }
+  }
+
+  .fighter svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* ---- weapons ---- */
+  .weapon {
+    position: absolute;
+    top: 44px;
+    right: -34px;
+    font-size: 46px;
+    pointer-events: none;
+    z-index: 5;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+  }
+  .weapon .wp {
+    display: inline-block;
+    transform-origin: 25% 75%;
+    transition: transform 0.16s ease;
+  }
+  .fighter.windup .wp   { transform: rotate(-55deg); }
+  .fighter.dashing .wp  { transform: rotate(75deg) scale(1.2); }
+  .fighter.facing-left .weapon { right: auto; left: -34px; }
+  .fighter.facing-left .wp { transform: scaleX(-1); }
+  .fighter.facing-left.windup .wp  { transform: scaleX(-1) rotate(-55deg); }
+  .fighter.facing-left.dashing .wp { transform: scaleX(-1) rotate(75deg) scale(1.2); }
+  .fighter.dead .weapon { opacity: 0.25; }
+
+  .arrow {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 30px;
+    color: #b36e4e;
+    pointer-events: none;
+    z-index: 8;
+    margin: -15px 0 0 -15px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    will-change: transform;
+  }
+
+  .fireball {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 62px;
+    height: 42px;
+    margin: -21px 0 0 -31px;
+    border-radius: 52% 70% 52% 70%;
+    pointer-events: none;
+    z-index: 12;
+    background: radial-gradient(circle at 67% 50%, #fffbd0 0 10%, #ffd129 24%, #ff5c0c 52%, #a91400 72%, transparent 75%);
+    filter: drop-shadow(0 0 9px #ff8a00) drop-shadow(0 0 20px rgba(255, 35, 0, 0.85));
+    will-change: transform;
+  }
+  .fireball::before {
+    content: '';
+    position: absolute;
+    right: 60%;
+    top: 2px;
+    width: 76px;
+    height: 38px;
+    background: linear-gradient(90deg, transparent, rgba(255, 61, 0, 0.35) 24%, #ff7417 64%, #ffd94f);
+    clip-path: polygon(0 18%, 34% 39%, 4% 62%, 45% 74%, 100% 50%);
+  }
+
+  .fire-geyser {
+    position: absolute;
+    left: -30px;
+    width: calc(100vw + 60px);
+    height: 210px;
+    margin-top: -105px;
+    pointer-events: none;
+    z-index: 10;
+    background:
+      radial-gradient(ellipse at 50% 50%, rgba(255, 255, 220, 0.95) 0 4%, transparent 16%),
+      linear-gradient(180deg, transparent 3%, rgba(255, 56, 0, 0.75) 16%, #ffbd24 34%, #fff4a1 49%, #ff9211 65%, rgba(190, 22, 0, 0.82) 84%, transparent 97%);
+    clip-path: polygon(0 25%, 8% 8%, 17% 20%, 27% 2%, 38% 18%, 49% 4%, 59% 19%, 70% 1%, 80% 17%, 91% 5%, 100% 23%, 96% 51%, 100% 77%, 89% 92%, 77% 81%, 66% 98%, 54% 83%, 42% 96%, 31% 80%, 18% 94%, 8% 76%, 0 88%);
+    filter: drop-shadow(0 0 18px #ff3b00) drop-shadow(0 0 40px rgba(255, 95, 0, 0.95));
+    animation: geyser-roar 1.8s ease-in-out forwards;
+  }
+  .fire-geyser::after {
+    content: '';
+    position: absolute;
+    inset: 37% 0;
+    background: linear-gradient(90deg, #ffb921, #fffde0 15%, #ffd34a 34%, #fff8bc 58%, #ffbd21 82%, #fffde0);
+    filter: blur(5px);
+  }
+  @keyframes geyser-roar {
+    0% { opacity: 0; transform: scaleX(0.02) scaleY(0.25); }
+    14% { opacity: 1; transform: scaleX(1) scaleY(0.72); }
+    32% { transform: scaleX(1) scaleY(1.1); }
+    48% { transform: scaleX(1) scaleY(0.88); }
+    66% { opacity: 1; transform: scaleX(1) scaleY(1.13); }
+    100% { opacity: 0; transform: scaleX(1) scaleY(0.2); }
+  }
+
+  .eye {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform 90ms ease;
+  }
+  .blinking .eye { transform: scaleY(0.07); }
+  .dead .eye { transform: scaleY(0.07); }
+
+  .brow { opacity: 0; transition: opacity 0.25s, transform 0.25s; transform-box: fill-box; transform-origin: center; }
+  .mood-excited .brow { opacity: 1; transform: translateY(-10px); }
+  .mood-worried .brow { opacity: 1; transform: rotate(14deg); }
+  .mood-worried .brow.right { transform: rotate(-14deg); }
+
+  .mouth { opacity: 0; }
+  .mood-neutral .mouth-smile,
+  .mood-excited .mouth-open,
+  .mood-worried .mouth-worried,
+  .mood-asleep  .mouth-sleep { opacity: 1; }
+
+  /* nameplate + HP */
+  .plate {
+    position: absolute;
+    top: -34px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    text-align: center;
+    pointer-events: none;
+  }
+  .plate .name {
+    font: 700 12px ui-monospace, 'SF Mono', monospace;
+    color: #fffaf0;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    letter-spacing: 0.06em;
+  }
+  .plate .hpwrap {
+    margin-top: 3px;
+    height: 7px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,250,240,0.7);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .plate .hp {
+    height: 100%;
+    width: 100%;
+    background: #6e8050;
+    transition: width 0.25s ease, background 0.25s ease;
+  }
+
+  /* speech bubble */
+  .bubble {
+    position: absolute;
+    bottom: calc(100% + 40px);
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    max-width: 300px;
+    min-width: 80px;
+    width: max-content;
+    background: #fffaf0;
+    color: #111827;
+    border: 1px solid #e4dac8;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font: 14px/1.4 Georgia, 'Iowan Old Style', serif;
+    box-shadow: 0 3px 14px rgba(14, 39, 88, 0.10);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 10;
+  }
+  .bubble.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    background: #fffaf0;
+    border-right: 1px solid #e4dac8;
+    border-bottom: 1px solid #e4dac8;
+    transform: translateX(-50%) rotate(45deg);
+  }
+
+  .float {
+    position: absolute;
+    font: 700 22px Georgia, serif;
+    color: #b36e4e;
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    animation: floatup 1.2s ease-out forwards;
+    z-index: 11;
+  }
+  .float.heal { color: #6e8050; }
+  .float.crit { font-size: 30px; color: #d23c3c; }
+  @keyframes floatup {
+    from { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+    to   { opacity: 0; transform: translateY(-70px) rotate(10deg) scale(1.15); }
+  }
+
+  .spark {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fffdf4;
+    box-shadow: 0 0 12px 4px rgba(255, 240, 180, 0.9);
+    pointer-events: none;
+    animation: sparkfly 0.5s ease-out forwards;
+    z-index: 9;
+  }
+  .spark.fire {
+    background: #ffd84a;
+    box-shadow: 0 0 14px 5px rgba(255, 62, 0, 0.95);
+  }
+  @keyframes sparkfly {
+    from { opacity: 1; transform: translate(0, 0) scale(1); }
+    to   { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+  }
+
+  #banner {
+    position: absolute;
+    top: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    font: 700 64px Georgia, serif;
+    color: #fffaf0;
+    text-shadow: 0 2px 10px rgba(14, 39, 88, 0.8);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 20;
+    text-align: center;
+  }
+  #banner.show { opacity: 1; }
+  #banner .sub {
+    font-size: 22px;
+    font-family: ui-monospace, 'SF Mono', monospace;
+    letter-spacing: 0.1em;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div id="banner"></div>
+
+<template id="maxyTemplate">
+  <div class="fighter idle">
+    <div class="plate">
+      <div class="name"></div>
+      <div class="hpwrap"><div class="hp"></div></div>
+    </div>
+    <div class="bubble"></div>
+    <div class="inner">
+      <div class="bob">
+        <div class="weapon"><span class="wp"></span></div>
+        <svg class="char" viewBox="0 0 529.22 537.47" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#0e2758" d="M435.79,167.09c1.39,14.72,2.28,35.15.07,59.18-2.76,30-8.41,91.42-53.06,144.85-12.71,15.21-31.5,37.17-64.27,50.75-20.1,8.33-39.72,11.14-57.08,11.14-27.21,0-48.87-6.89-58.14-10.18-24.28-8.71-46.26-13.88-64.82-17.03-9.81-1.67-17.2-2.89-27.51-3.37-5.3-.24-11.2-.58-17.52-.58-14.97,0-32.31,1.91-49.66,11.55-7.2,4-22.36,11.82-33.28,28.4-2.31,3.5-5.73,7.26-7.1,13.17-.77,3.33-.83,6.45-.55,9.17,10.18,16.5,31.9,25.1,70.31,39.79,40.58,15.52,76.46,23.08,103.36,27.2,39.62,6.07,70.21,6.29,88.85,6.35.69,0,1.39,0,2.08,0,51.31,0,88.85-5.96,96.74-7.26,21.15-3.46,50.65-8.45,86.8-22.39,39.52-15.24,66.61-25.68,76.25-50.69,1.5-3.88,4.63-13.43-2.86-55.07-7.57-42.15-18.12-73.19-19.67-77.68-20.91-60.73-31.37-91.09-47.15-120.59-7.16-13.38-14.37-25.43-21.82-36.72"/>
+          <path fill="#859ebe" d="M405.8,126.38c-2.7,14.13-7.43,33.47-16.19,55.39-9.33,23.33-17.43,43.59-36.11,63.7-9.73,10.47-34.11,36.7-70.49,40.89-3.28.38-6.47.55-9.6.55-15.24,0-29.13-4.16-46.48-9.36-22.64-6.78-33.98-14.37-61.63-19.18-10.17-1.77-16.26-2.83-24.53-2.83h-.34s-62.3.23-108.91,65.12c-.28.39-.55.77-.55.77-7.32,10.87-11.91,20.88-14.86,28.78-2.55,6.79-3.97,12.26-5.54,18.27-1.6,6.15-2.79,11.62-6.31,31.17-1.14,6.36-2.61,14.59-4.27,24.25,6.4-10.91,17.12-25.9,34.2-39.3,14.59-11.45,27.98-17.13,33.06-19.16,2.85-1.13,13.75-5.35,28.95-7.8,3.93-.63,12.18-1.8,23.2-1.8,8.13,0,17.77.63,28.3,2.58,6.67,1.23,16.61,3.13,28.41,8.15,4.01,1.7,11.21,5.03,18.85,9,4.92,2.56,8.37,4.53,14.18,7.14,4.9,2.21,9.03,3.76,11.78,4.74,0,0,19.23,6.36,40.24,6.98.99.03,1.96.04,2.91.04,5.34,0,9.68-.39,9.68-.39,6.6-.26,15.9-1.18,26.55-4.2,39.25-11.14,61.44-41.03,74.07-58.02,49.95-67.19,47.93-167.85,47.41-184.77-5.17-7.02-10.49-13.86-16.02-20.7"/>
+          <path fill="#bbccf3" d="M263.85,0c-.17,0-.33,0-.49,0-9.56.13-18.97,3.98-51.45,33.34-34.1,30.83-48.96,48.06-48.96,48.06-45.84,53.13-68.77,79.69-92.48,121.49-30.3,53.41-44.91,100.09-51.23,123.02-.58,2.1-1.15,4.32-1.73,6.71,2.32-5.49,4.94-11.19,7.9-17.04,13.39-26.42,36.61-72.21,83.93-88.86,13.54-4.76,25.96-6.06,33.79-6.37,1.47-.06,2.91-.08,4.3-.08,27.39,0,38.73,10.82,72,18.83,15.27,3.67,31.78,7.88,49.5,7.88,9.36,0,19.06-1.17,29.1-4.22,36.49-11.06,56.44-41.33,63.25-51.53,15.36-23.02,19.95-45.23,21.9-55.14,2.47-12.57,3.14-23.85,3.04-33.14-6.32-7.35-12.92-14.91-19.87-22.86,0,0-17.39-19.89-51.98-49.48C282.51,3.39,272.5,0,263.85,0"/>
+          <g class="face mood-neutral">
+            <g class="eye left" transform="translate(203,128)">
+              <ellipse rx="27" ry="31" fill="#fffdf4"/>
+              <circle class="pupil" r="12.5" fill="#0e2758"/>
+              <circle class="glint" cx="5" cy="-6" r="4" fill="#fffdf4"/>
+            </g>
+            <g class="eye right" transform="translate(288,112)">
+              <ellipse rx="27" ry="31" fill="#fffdf4"/>
+              <circle class="pupil" r="12.5" fill="#0e2758"/>
+              <circle class="glint" cx="5" cy="-6" r="4" fill="#fffdf4"/>
+            </g>
+            <rect class="brow left"  x="182" y="82" width="44" height="9" rx="4.5" fill="#0e2758"/>
+            <rect class="brow right" x="266" y="66" width="44" height="9" rx="4.5" fill="#0e2758"/>
+            <path class="mouth mouth-smile"   d="M 216 183 Q 248 204 282 174" stroke="#0e2758" stroke-width="8" stroke-linecap="round" fill="none"/>
+            <ellipse class="mouth mouth-open" cx="248" cy="185" rx="15" ry="19" fill="#0e2758"/>
+            <path class="mouth mouth-worried" d="M 220 192 Q 248 172 278 182" stroke="#0e2758" stroke-width="8" stroke-linecap="round" fill="none"/>
+            <path class="mouth mouth-sleep"   d="M 230 186 Q 248 192 268 182" stroke="#0e2758" stroke-width="6" stroke-linecap="round" fill="none"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  const W = () => window.innerWidth
+  const H = () => window.innerHeight
+  const SIZE = 160
+  const TOP_MARGIN = 150
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+  const rand = (a, b) => a + Math.random() * (b - a)
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+  // Unit vector from a to b; random direction when the points coincide, so
+  // co-located fighters always separate instead of deadlocking on a zero vector.
+  function dirBetween(ax, ay, bx, by) {
+    const dx = bx - ax
+    const dy = by - ay
+    const d = Math.hypot(dx, dy)
+    if (d < 1) {
+      const a = rand(0, Math.PI * 2)
+      return { x: Math.cos(a), y: Math.sin(a), d: 0 }
+    }
+    return { x: dx / d, y: dy / d, d }
+  }
+  const banner = document.getElementById('banner')
+
+  const ROSTER = [
+    { name: 'SGD',      hue: 0   },
+    { name: 'ADAM',     hue: 285 },
+    { name: 'RMSPROP',  hue: 150 },
+    { name: 'MOMENTUM', hue: 60  },
+    { name: 'ADAGRAD',  hue: 210 },
+    // the learned optimizer: huge, tanky, and it EATS baselines
+    { name: 'oLSTM',    hue: 320, size: 280, hpMax: 320 },
+  ]
+  const SLOTS = ROSTER.length
+
+  // one weapon per optimizer, stats to match the lore:
+  // ADAM winds up fast (adaptive), RMSPROP hits like a truck but slowly,
+  // MOMENTUM's dash carries far, ADAGRAD is ranged with per-shot damage decay.
+  const WEAPONS = {
+    SGD:      { emoji: '🏏', windup: 420, dashSpeed: 1150, dashMs: 320, dmg: [8, 15],  knock: 550 },
+    ADAM:     { emoji: '⚔️', windup: 200, dashSpeed: 1250, dashMs: 280, dmg: [6, 11],  knock: 420 },
+    RMSPROP:  { emoji: '🔨', windup: 700, dashSpeed: 1000, dashMs: 360, dmg: [14, 23], knock: 900 },
+    MOMENTUM: { emoji: '🔱', windup: 380, dashSpeed: 1550, dashMs: 460, dmg: [9, 16],  knock: 750 },
+    ADAGRAD:  { emoji: '🏹', windup: 520, ranged: true, range: 430, tooClose: 220,
+                arrowSpeed: 950, dmgStart: 16, dmgDecay: 1.5, dmgMin: 4, knock: 450,
+                special: { type: 'fireball', windup: 650, cooldown: [5200, 8200],
+                           speed: 760, dmg: [15, 24], knock: 620 } },
+    // no weapon — oLSTM IS the weapon. Bites the healthy (10-18 dmg), swallows
+    // anyone under 50% hp whole, heals and GROWS with every meal.
+    oLSTM:    { emoji: '🧠', eats: true, windup: 450, dashSpeed: 850, dashMs: 550,
+                dmg: [10, 18], knock: 600,
+                special: { type: 'geyser', windup: 1100, cooldown: [14000, 21000],
+                           dmg: [14, 23], knock: 360 } },
+  }
+
+  const EAT_LINES = [
+    'nom.',
+    'hand-tuned and delicious.',
+    'I contain your gradients now.',
+    'one less baseline.',
+    'learned optimizers stay winning.',
+    'you generalized poorly.',
+  ]
+
+  const TAUNTS = [
+    'Your gradient is NOISE.',
+    'I have momentum. You have regrets.',
+    'Enjoy your saddle point.',
+    'Adaptive learning rate THIS.',
+    'You call that a step size?',
+    'KL penalty incoming.',
+    "You've overfit to losing.",
+    'Vanishing gradients? Vanishing YOU.',
+    'My loss curve only goes down.',
+    'Get clipped.',
+    'Warmup is over.',
+    'Second-order violence.',
+  ]
+  const KO_LINES = [
+    'diverged…',
+    'NaN…',
+    'early stopping…',
+    'checkpoint me…',
+    'lr too high…',
+  ]
+  const WIN_LINES = [
+    'Converged. Globally.',
+    'State of the art, baby.',
+    'The leaderboard is MINE.',
+    'Benchmark saturated.',
+  ]
+
+  class Fighter {
+    constructor(spec, slot) {
+      this.name = spec.name
+      this.slot = slot
+      this.weapon = WEAPONS[spec.name]
+      this.baseSize = spec.size || 160
+      this.hpMax = spec.hpMax || 100
+      const t = document.getElementById('maxyTemplate')
+      this.el = t.content.firstElementChild.cloneNode(true)
+      this.el.querySelector('.name').textContent = `${this.weapon.emoji} ${spec.name}`
+      // eaters hold no weapon — the maw is the weapon
+      this.el.querySelector('.wp').textContent = this.weapon.eats ? '' : this.weapon.emoji
+      this.el.querySelector('svg').style.filter = spec.hue ? `hue-rotate(${spec.hue}deg)` : ''
+      this.inner = this.el.querySelector('.inner')
+      this.face = this.el.querySelector('.face')
+      this.hpBar = this.el.querySelector('.hp')
+      this.bubbleEl = this.el.querySelector('.bubble')
+      document.body.appendChild(this.el)
+      this.bubbleTimer = null
+      this.reset(slot)
+    }
+
+    reset(slot = Math.floor(rand(0, SLOTS)), slots = SLOTS) {
+      this.size = this.baseSize
+      this.applySize()
+      this.hp = this.hpMax
+      this.alive = true
+      this.state = 'idle'
+      this.stateUntil = 0
+      this.target = null
+      this.vx = 0
+      this.vy = 0
+      this.shots = 0
+      const special = this.weapon.special
+      this.specialReadyAt = special
+        ? performance.now() + rand(special.cooldown[0] * 0.45, special.cooldown[1] * 0.65)
+        : Infinity
+      // slot-based spawn: spread across the width so fighters never stack
+      const lane = Math.max(1, (W() - this.size) / slots)
+      this.x = clamp(slot * lane + rand(0, lane * 0.6), 0, Math.max(0, W() - this.size))
+      this.y = rand(TOP_MARGIN, Math.max(TOP_MARGIN + 1, H() - this.size))
+      this.el.classList.remove('dead')
+      // undo an "eaten" exit
+      this.el.style.display = ''
+      this.el.style.transition = ''
+      this.el.style.opacity = ''
+      this.inner.style.opacity = '1'
+      this.inner.style.transform = ''
+      this.el.style.filter = ''
+      this.setPose('idle')
+      this.setMood('neutral')
+      this.updateHp()
+      this.place()
+    }
+
+    applySize() {
+      this.el.style.width = this.size + 'px'
+      this.el.style.height = this.size + 'px'
+    }
+
+    place() {
+      this.x = clamp(this.x, -this.size * 0.2, W() - this.size * 0.8)
+      this.y = clamp(this.y, TOP_MARGIN, H() - this.size)
+      this.el.style.transform = `translate3d(${this.x}px, ${this.y}px, 0)`
+    }
+
+    cx() { return this.x + this.size / 2 }
+    cy() { return this.y + this.size / 2 }
+
+    setPose(pose) {
+      this.el.classList.remove('idle', 'walking', 'windup', 'dashing')
+      if (pose) this.el.classList.add(pose)
+    }
+
+    setFacing(other) {
+      if (!other) return
+      this.el.classList.toggle('facing-left', other.cx() < this.cx())
+    }
+
+    setMood(mood) {
+      this.face.setAttribute('class', 'face mood-' + mood)
+    }
+
+    updateHp() {
+      const pct = Math.max(0, (this.hp / this.hpMax) * 100)
+      this.hpBar.style.width = pct + '%'
+      this.hpBar.style.background = pct > 55 ? '#6e8050' : pct > 25 ? '#c9a13d' : '#d23c3c'
+    }
+
+    say(text, ms = 2600) {
+      this.bubbleEl.textContent = text
+      this.bubbleEl.classList.add('show')
+      clearTimeout(this.bubbleTimer)
+      this.bubbleTimer = setTimeout(() => this.bubbleEl.classList.remove('show'), ms)
+    }
+
+    lookAt(other) {
+      if (!other) return
+      const dx = other.cx() - this.cx()
+      const dy = other.cy() - this.cy()
+      const d = Math.hypot(dx, dy) || 1
+      const k = Math.min(10, d / 30)
+      for (const p of this.el.querySelectorAll('.pupil, .glint')) {
+        p.style.transform = `translate(${(dx / d) * k}px, ${(dy / d) * k}px)`
+      }
+    }
+
+    floatText(txt, cls = '') {
+      const f = document.createElement('div')
+      f.className = 'float ' + cls
+      f.textContent = txt
+      f.style.left = this.x + rand(30, 100) + 'px'
+      f.style.top = this.y - 20 + 'px'
+      document.body.appendChild(f)
+      setTimeout(() => f.remove(), 1300)
+    }
+
+    sparks(n = 7, cls = '') {
+      for (let i = 0; i < n; i++) {
+        const s = document.createElement('div')
+        s.className = 'spark ' + cls
+        s.style.left = this.cx() + 'px'
+        s.style.top = this.cy() + 'px'
+        const a = rand(0, Math.PI * 2)
+        const r = rand(35, 95)
+        s.style.setProperty('--dx', Math.cos(a) * r + 'px')
+        s.style.setProperty('--dy', Math.sin(a) * r + 'px')
+        document.body.appendChild(s)
+        setTimeout(() => s.remove(), 550)
+      }
+    }
+
+    die() {
+      this.alive = false
+      this.state = 'dead'
+      this.el.classList.add('dead')
+      this.setMood('asleep')
+      this.setPose(null)
+      this.say(KO_LINES[Math.floor(Math.random() * KO_LINES.length)], 3200)
+      this.inner.style.transform = 'rotate(94deg)'
+      this.el.style.filter = 'grayscale(0.9)'
+      this.inner.style.opacity = '0.35'
+      this.floatText('KO', 'crit')
+    }
+  }
+
+  const fighters = ROSTER.map((spec, i) => new Fighter(spec, i))
+  let round = 1
+  let roundOver = false
+
+  // ---------- projectiles (ADAGRAD's arrows) ----------
+  const projectiles = []
+  function fireArrow(shooter, target) {
+    const dir = dirBetween(shooter.cx(), shooter.cy(), target.cx(), target.cy())
+    const dmg = Math.max(
+      shooter.weapon.dmgMin,
+      shooter.weapon.dmgStart - shooter.shots * shooter.weapon.dmgDecay,
+    )
+    shooter.shots++
+    if (shooter.shots === 6) shooter.say('lr decay is a lifestyle…', 2000)
+    const el = document.createElement('div')
+    el.className = 'arrow'
+    el.textContent = '➤'
+    document.body.appendChild(el)
+    projectiles.push({
+      el,
+      shooter,
+      dmg,
+      x: shooter.cx(),
+      y: shooter.cy(),
+      vx: dir.x * shooter.weapon.arrowSpeed,
+      vy: dir.y * shooter.weapon.arrowSpeed,
+      radius: 0,
+      dieAt: performance.now() + 2000,
+    })
+  }
+
+  function fireBreath(shooter, target) {
+    const special = shooter.weapon.special
+    const dir = dirBetween(shooter.cx(), shooter.cy(), target.cx(), target.cy())
+    const el = document.createElement('div')
+    el.className = 'fireball'
+    document.body.appendChild(el)
+    shooter.say('learning rate: BURNING', 1900)
+    projectiles.push({
+      el,
+      shooter,
+      dmg: rand(special.dmg[0], special.dmg[1]),
+      knock: special.knock,
+      fire: true,
+      x: shooter.cx(),
+      y: shooter.cy(),
+      vx: dir.x * special.speed,
+      vy: dir.y * special.speed,
+      radius: 24,
+      dieAt: performance.now() + 2600,
+    })
+  }
+
+  function fireGeyser(shooter) {
+    const special = shooter.weapon.special
+    const el = document.createElement('div')
+    el.className = 'fire-geyser'
+    el.style.top = shooter.cy() + 'px'
+    document.body.appendChild(el)
+    shooter.say('TEMPERATURE: ∞', 2300)
+    shooter.setMood('excited')
+
+    const victims = livingEnemies(shooter)
+    for (const [i, victim] of victims.entries()) {
+      setTimeout(() => {
+        if (!victim.alive) return
+        const dir = dirBetween(shooter.cx(), shooter.cy(), victim.cx(), victim.cy())
+        hit(shooter, victim, {
+          dmg: rand(special.dmg[0], special.dmg[1]),
+          knock: special.knock,
+          dir,
+          fire: true,
+        })
+      }, 280 + i * 90)
+    }
+    setTimeout(() => el.remove(), 1900)
+  }
+
+  function clearProjectiles() {
+    for (const p of projectiles) p.el.remove()
+    projectiles.length = 0
+  }
+
+  function tickProjectiles(now, dt) {
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      const p = projectiles[i]
+      p.x += p.vx * dt
+      p.y += p.vy * dt
+      const angle = Math.atan2(p.vy, p.vx) * 180 / Math.PI
+      p.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0) rotate(${angle}deg)`
+      let dead = now > p.dieAt || p.x < -60 || p.x > W() + 60 || p.y < -60 || p.y > H() + 60
+      if (!dead) {
+        for (const f of fighters) {
+          if (f === p.shooter || !f.alive) continue
+          if (Math.hypot(f.cx() - p.x, f.cy() - p.y) < f.size * 0.39 + p.radius) {
+            const speed = Math.hypot(p.vx, p.vy) || 1
+            hit(p.shooter, f, {
+              dmg: p.dmg,
+              knock: p.knock,
+              dir: { x: p.vx / speed, y: p.vy / speed },
+              fire: p.fire,
+            })
+            dead = true
+            break
+          }
+        }
+      }
+      if (dead) {
+        p.el.remove()
+        projectiles.splice(i, 1)
+      }
+    }
+  }
+
+  function livingEnemies(f) {
+    return fighters.filter((o) => o !== f && o.alive)
+  }
+
+  function showBanner(html, ms = 3000) {
+    banner.innerHTML = html
+    banner.classList.add('show')
+    setTimeout(() => banner.classList.remove('show'), ms)
+  }
+
+  function hit(attacker, victim, opts = {}) {
+    const w = attacker.weapon
+    const crit = Math.random() < 0.15
+    let base = opts.dmg !== undefined ? opts.dmg : rand(w.dmg[0], w.dmg[1])
+    const dmg = Math.round(crit ? base * 1.8 : base)
+    // mass: big fighters barely budge
+    const knock = (opts.knock !== undefined ? opts.knock : w.knock) *
+      (crit ? 1.6 : 1) * (160 / victim.size)
+    victim.hp -= dmg
+    victim.updateHp()
+    victim.sparks(crit ? 12 : 7, opts.fire ? 'fire' : '')
+    victim.floatText((crit ? 'CRIT −' : '−') + dmg, crit ? 'crit' : '')
+    const dir = opts.dir || dirBetween(attacker.cx(), attacker.cy(), victim.cx(), victim.cy())
+    victim.vx += dir.x * knock
+    victim.vy += dir.y * knock - 150
+    attacker.vx -= dir.x * (opts.dir ? 0 : 180)
+    attacker.vy -= dir.y * (opts.dir ? 0 : 180)
+    victim.setMood('worried')
+    victim.state = 'hitstun'
+    victim.stateUntil = performance.now() + 450
+    if (victim.hp <= 0) {
+      victim.die()
+      attacker.say(TAUNTS[Math.floor(Math.random() * TAUNTS.length)], 2400)
+    } else if (Math.random() < 0.25) {
+      ;(Math.random() < 0.5 ? attacker : victim).say(
+        TAUNTS[Math.floor(Math.random() * TAUNTS.length)], 2200)
+    }
+  }
+
+  function eat(eater, victim) {
+    victim.alive = false
+    victim.state = 'eaten'
+    victim.bubbleEl.classList.remove('show')
+    // spiral into the maw
+    victim.el.style.transition = 'transform 0.55s ease-in, opacity 0.55s ease-in'
+    victim.el.style.transform =
+      `translate3d(${eater.cx() - victim.size / 2}px, ${eater.cy() - victim.size / 2}px, 0) scale(0.04) rotate(540deg)`
+    victim.el.style.opacity = '0'
+    setTimeout(() => { if (!victim.alive) victim.el.style.display = 'none' }, 600)
+    victim.floatText('GULP', 'crit')
+    eater.sparks(10)
+    // a meal heals and GROWS the beast
+    eater.hp = Math.min(eater.hpMax, eater.hp + 40)
+    eater.updateHp()
+    eater.size = Math.min(430, eater.size + 26)
+    eater.applySize()
+    eater.setMood('excited')
+    eater.say(EAT_LINES[Math.floor(Math.random() * EAT_LINES.length)], 2600)
+    setTimeout(() => eater.setMood('neutral'), 1800)
+  }
+
+  async function endRound(winner) {
+    roundOver = true
+    if (winner) {
+      winner.setMood('excited')
+      winner.say(
+        winner.weapon.eats
+          ? 'I ate the baselines. Cite me.'
+          : WIN_LINES[Math.floor(Math.random() * WIN_LINES.length)],
+        4000)
+      winner.floatText('+100')
+      showBanner(`${winner.name} WINS<div class="sub">round ${round}</div>`, 4200)
+      // victory spin
+      winner.inner.style.transition = 'transform 1.2s cubic-bezier(0.45,0,0.2,1)'
+      winner.inner.style.transform = 'rotate(720deg)'
+      setTimeout(() => {
+        winner.inner.style.transition = ''
+        winner.inner.style.transform = ''
+      }, 1300)
+    } else {
+      showBanner(`DRAW<div class="sub">mutual divergence</div>`, 4200)
+    }
+    await wait(6500)
+    round++
+    clearProjectiles()
+    for (const f of fighters) f.reset(f.slot)
+    showBanner(`ROUND ${round}<div class="sub">FIGHT</div>`, 2600)
+    roundOver = false
+  }
+
+  // one shared physics/AI loop
+  let last = performance.now()
+  function tick(now) {
+    const dt = Math.min(0.05, (now - last) / 1000)
+    last = now
+
+    for (const f of fighters) {
+      if (!f.alive) {
+        if (f.state === 'eaten') continue // it's gone. it's inside oLSTM now.
+        // corpses keep sliding a bit, then settle on the floor
+        f.vx *= 0.92
+        f.vy += 1400 * dt
+        f.x += f.vx * dt
+        f.y += f.vy * dt
+        if (f.y >= H() - f.size) { f.y = H() - f.size; f.vy = 0 }
+        f.place()
+        continue
+      }
+
+      const enemies = livingEnemies(f)
+      const nearest = enemies.length
+        ? enemies.reduce((a, b) =>
+            Math.hypot(a.cx() - f.cx(), a.cy() - f.cy()) <
+            Math.hypot(b.cx() - f.cx(), b.cy() - f.cy()) ? a : b)
+        : null
+      f.lookAt(nearest)
+      f.setFacing(f.target && f.target.alive ? f.target : nearest)
+
+      switch (f.state) {
+        case 'idle': {
+          if (!roundOver && nearest && now >= f.stateUntil) {
+            f.target = enemies[Math.floor(Math.random() * enemies.length)]
+            if (f.weapon.special && now >= f.specialReadyAt) {
+              f.state = 'special-windup'
+              f.stateUntil = now + f.weapon.special.windup
+              f.specialReadyAt = now + rand(f.weapon.special.cooldown[0], f.weapon.special.cooldown[1])
+              f.setPose('windup')
+              f.say(f.weapon.special.type === 'geyser' ? 'global optimization.' : 'warming up…', 1800)
+            } else {
+              f.state = 'chase'
+              f.setPose('walking')
+            }
+            f.setMood('excited')
+          }
+          break
+        }
+        case 'special-windup': {
+          if (now >= f.stateUntil) {
+            const target = f.target
+            if (target && target.alive) {
+              if (f.weapon.special.type === 'geyser') fireGeyser(f)
+              else fireBreath(f, target)
+            }
+            f.state = 'recover'
+            f.stateUntil = now + rand(800, 1300)
+            f.setPose('idle')
+          }
+          break
+        }
+        case 'chase': {
+          const t = f.target
+          if (!t || !t.alive) { f.state = 'idle'; f.setPose('idle'); break }
+          const dir = dirBetween(f.cx(), f.cy(), t.cx(), t.cy())
+          const attackRange = f.weapon.ranged ? f.weapon.range : (f.size + t.size) * 0.48
+          const accel = 1400 * (160 / f.size) // the big one lumbers
+          if (f.weapon.ranged && dir.d < f.weapon.tooClose) {
+            // archer kites: back away from anyone in melee range
+            f.vx -= dir.x * 1200 * dt
+            f.vy -= dir.y * 1200 * dt
+          } else if (dir.d < attackRange) {
+            f.state = 'windup'
+            f.stateUntil = now + f.weapon.windup
+            f.setPose('windup')
+          } else {
+            f.vx += dir.x * accel * dt
+            f.vy += dir.y * accel * dt
+            f.inner.style.transform = `rotate(${clamp(dir.x * 8, -8, 8)}deg)`
+          }
+          break
+        }
+        case 'windup': {
+          if (now >= f.stateUntil) {
+            const t = f.target
+            if (t && t.alive) {
+              if (f.weapon.ranged) {
+                fireArrow(f, t)
+                f.state = 'recover'
+                f.stateUntil = now + rand(500, 1000)
+                f.setPose('idle')
+              } else {
+                const dir = dirBetween(f.cx(), f.cy(), t.cx(), t.cy())
+                f.vx = dir.x * f.weapon.dashSpeed
+                f.vy = dir.y * f.weapon.dashSpeed
+                f.state = 'dash'
+                f.stateUntil = now + f.weapon.dashMs
+                f.setPose('dashing')
+              }
+            } else {
+              f.state = 'idle'
+              f.setPose('idle')
+            }
+          }
+          break
+        }
+        case 'dash': {
+          const t = f.target
+          if (t && t.alive) {
+            const d = Math.hypot(t.cx() - f.cx(), t.cy() - f.cy())
+            if (d < (f.size + t.size) * 0.31) {
+              // the eater swallows weakened prey whole; bites the rest
+              if (f.weapon.eats && t.hp <= t.hpMax * 0.5) eat(f, t)
+              else hit(f, t)
+              f.state = 'recover'
+              f.stateUntil = now + rand(500, 1100)
+              f.setPose('idle')
+              f.setMood('neutral')
+              f.inner.style.transform = ''
+            }
+          }
+          if (now >= f.stateUntil && f.state === 'dash') {
+            f.state = 'recover'
+            f.stateUntil = now + rand(400, 900)
+            f.setPose('idle')
+            f.setMood('neutral')
+            f.inner.style.transform = ''
+          }
+          break
+        }
+        case 'hitstun': {
+          if (now >= f.stateUntil) {
+            f.state = 'recover'
+            f.stateUntil = now + rand(200, 600)
+            f.setMood('neutral')
+          }
+          break
+        }
+        case 'recover': {
+          if (now >= f.stateUntil) {
+            f.state = 'idle'
+            f.stateUntil = now + rand(100, 700)
+            f.setPose('idle')
+          }
+          break
+        }
+      }
+
+      // gentle pairwise separation so living fighters never fully overlap
+      for (const o of enemies) {
+        const sep = dirBetween(o.cx(), o.cy(), f.cx(), f.cy())
+        if (sep.d < (f.size + o.size) * 0.225) {
+          f.vx += sep.x * 900 * dt
+          f.vy += sep.y * 900 * dt
+        }
+      }
+
+      // integrate with friction
+      f.vx *= Math.pow(0.0008, dt)
+      f.vy *= Math.pow(0.0008, dt)
+      f.x += f.vx * dt
+      f.y += f.vy * dt
+      // soft bounce off edges
+      if (f.x <= -f.size * 0.2 || f.x >= W() - f.size * 0.8) f.vx *= -0.6
+      if (f.y <= TOP_MARGIN || f.y >= H() - f.size) f.vy *= -0.6
+      f.place()
+    }
+
+    tickProjectiles(now, dt)
+
+    // round bookkeeping
+    if (!roundOver) {
+      const alive = fighters.filter((f) => f.alive)
+      if (alive.length <= 1) endRound(alive[0] || null)
+    }
+
+    requestAnimationFrame(tick)
+  }
+
+  // ---------- kickoff ----------
+  ;(async function start() {
+    // wait for a real viewport (Electron can fire the first layout at 0×0),
+    // then re-scatter everyone with true dimensions
+    while (W() < 100 || H() < 100) await wait(100)
+    for (const f of fighters) f.reset(f.slot)
+
+    // random blinking
+    ;(async function blinkLoop() {
+      while (true) {
+        await wait(rand(2200, 5200))
+        const f = fighters[Math.floor(Math.random() * fighters.length)]
+        if (f.alive) {
+          f.el.classList.add('blinking')
+          await wait(110)
+          f.el.classList.remove('blinking')
+        }
+      }
+    })()
+
+    await wait(1200)
+    showBanner(`ROUND 1<div class="sub">FIGHT</div>`, 2800)
+    for (const f of fighters) {
+      f.stateUntil = performance.now() + rand(400, 2000)
+    }
+    requestAnimationFrame(tick)
+  })()
+</script>
+</body>
+</html>

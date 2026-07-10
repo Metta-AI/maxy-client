@@ -5,8 +5,18 @@ let win = null
 let tray = null
 let paused = false
 
+function pickDisplay() {
+  const pick = (process.env.MAXY_DISPLAY || 'primary').toLowerCase()
+  const displays = screen.getAllDisplays()
+  if (pick === 'left') return displays.reduce((a, b) => (a.bounds.x <= b.bounds.x ? a : b))
+  if (pick === 'right') return displays.reduce((a, b) => (a.bounds.x >= b.bounds.x ? a : b))
+  return screen.getPrimaryDisplay()
+}
+
 function createWindow() {
-  const wa = screen.getPrimaryDisplay().workArea
+  const display = pickDisplay()
+  console.log('maxy display:', process.env.MAXY_DISPLAY || 'primary', JSON.stringify(display.bounds))
+  const wa = display.workArea
   win = new BrowserWindow({
     x: wa.x,
     y: wa.y,
@@ -30,7 +40,7 @@ function createWindow() {
   // Click-through by default; the renderer asks for interactivity when the
   // cursor is over Maxy so the rest of the screen stays fully usable.
   win.setIgnoreMouseEvents(true, { forward: true })
-  win.loadFile('index.html')
+  win.loadFile(process.env.MAXY_MODE === 'battle' ? 'battle.html' : 'index.html')
 
   // Global cursor feed: the overlay is click-through, so the renderer can't
   // see the mouse on its own. 20 Hz is plenty for pupil tracking + chasing.

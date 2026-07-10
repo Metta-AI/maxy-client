@@ -33,6 +33,10 @@ Runs on macOS (Electron 37). Linux/Windows should work with minor tweaks to the 
 
 The menu-bar tray (❊ maxy) has commands: _Say something_, _Do a trick_, _Gradient descent_, _Breathe fire_, _Inferno geyser_, _Show policy_, _Go incognito_, _Pause/Resume_, _Quit_.
 
+### Battle mode
+
+Set `MAXY_MODE=battle` to run the optimizer arena instead of the desktop companion. ADAGRAD periodically breathes ranged fireballs with collision damage, while oLSTM unleashes a rarer screen-wide inferno geyser that damages every living opponent. On multi-display Macs, set `MAXY_DISPLAY=left` or `MAXY_DISPLAY=right` to choose the screen.
+
 ## How it works
 
 - **Electron shell** (`main.js`, `preload.js`) — transparent, frameless, always-on-top overlay covering the whole screen; click-through by default, becomes interactive only when the cursor hovers over Maxy
