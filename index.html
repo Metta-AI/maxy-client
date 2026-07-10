@@ -338,10 +338,10 @@
 
   // ---------- the policy (an actual softmax, naturally) ----------
   const ACTIONS = [
+    { name: 'quip',     logit: 2.5, fn: doQuip },
     { name: 'wander',   logit: 2.0, fn: wander },
-    { name: 'quip',     logit: 1.7, fn: doQuip },
-    { name: 'chase',    logit: 0.9, fn: chaseCursor },
-    { name: 'gradient', logit: 0.8, fn: gradientDescent },
+    { name: 'gradient', logit: 0.9, fn: gradientDescent },
+    { name: 'chase',    logit: 0.8, fn: chaseCursor },
     { name: 'explore',  logit: 0.7, fn: epsilonTeleport },
     { name: 'peek',     logit: 0.7, fn: edgePeek },
     { name: 'logoform', logit: 0.6, fn: logoForm },
@@ -516,7 +516,7 @@
     setPose('asleep')
     el.classList.add('asleep-face')
     say('No observations… entering eval mode.', 2600)
-    while (Date.now() - state.lastCursorMove > 4000) {
+    while (Date.now() - state.lastCursorMove > 5000) {
       floatText('z', 'z')
       await wait(2200)
     }
@@ -610,13 +610,13 @@
     await awaken('maxy online. objective: vibes.')
     while (true) {
       if (state.paused || state.dragging) { await wait(600); continue }
-      if (Date.now() - state.lastCursorMove > 150000) {
+      if (Date.now() - state.lastCursorMove > 300000) {
         await sleep()
         continue
       }
       const action = sampleAction()
       await action.fn()
-      await wait(rand(4000, 12000))
+      await wait(rand(3000, 8000))
     }
   })()
 </script>
