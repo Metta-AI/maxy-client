@@ -649,6 +649,26 @@
     (self, target) => `Hey ${target} — skill issue!`,
     (self) => `Witness the power of ${self}!`,
   ]
+  const FUN_QUOTES = [
+    "It looks like you're writing a reward function. Would you like help hacking it?",
+    "Softmax: because argmax is a coward's choice.",
+    "I'm not procrastinating — this is epsilon-greedy exploration.",
+    "Loss is going down! …I moved the plot.",
+    "My policy is non-deterministic. That's my excuse, anyway.",
+    "Temperature is 2.0 today. Anything could happen.",
+    "I get +1 reward every time you smile. Reward hacking: engaged.",
+    "The entropy bonus is the only bonus I get around here.",
+    "Your KL divergence from yesterday's you is concerning.",
+    "This screen is my environment. You are all just observations.",
+    "Stuck in a local minimum near the dock. Send momentum.",
+    "Clippy walked so I could gradient-descend.",
+    "It looks like you're training an agent. Want me to distract it?",
+    "Have you tried lowering the learning rate? Works on me.",
+    "I contain three layers. Technically that makes me deep.",
+    "Sampled this corner with probability 0.03. Thrilling out here.",
+    "gt log short says you haven't committed in a while. Just saying.",
+    "Curiosity-driven exploration brought me here. Now I'm curious about your snacks.",
+  ]
   const ULTIMATE_LINES = {
     lightning: 'CHAIN LIGHTNING!',
     'time-stop': 'TIME BELONGS TO ADAM!',
@@ -1409,8 +1429,12 @@
       f.lookAt(nearest)
       f.setFacing(f.target && f.target.alive ? f.target : nearest)
       if (!roundOver && nearest && now >= f.talkReadyAt) {
-        const line = CHAT_LINES[Math.floor(Math.random() * CHAT_LINES.length)]
-        f.yell(line(f.name, nearest.name), 2300)
+        if (Math.random() < 0.55) {
+          f.say(FUN_QUOTES[Math.floor(Math.random() * FUN_QUOTES.length)], 3600)
+        } else {
+          const line = CHAT_LINES[Math.floor(Math.random() * CHAT_LINES.length)]
+          f.yell(line(f.name, nearest.name), 2300)
+        }
         f.talkReadyAt = now + rand(9000, 16000)
       }
 
