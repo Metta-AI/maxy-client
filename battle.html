@@ -324,6 +324,9 @@
     28% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
     to { opacity: 0; transform: translate(-50%, -80%) scale(0.75); }
   }
+  .fighter.shielded .inner { filter: drop-shadow(0 0 18px #62ddff) drop-shadow(0 0 38px #4f7cff); }
+  .fighter.overclocked .inner { filter: drop-shadow(0 0 18px #ffe34f) saturate(1.45); }
+  .fighter.thorned .inner { filter: drop-shadow(0 0 18px #68e36e) saturate(1.25); }
 
   .eye {
     transform-box: fill-box;
@@ -637,6 +640,29 @@
                 ultimate: { type: 'black-hole', windup: 1300, cooldown: [22000, 30000], dmg: [16, 25], knock: 720 } },
   }
 
+  const BONUS_POWERS = {
+    'frost-nova':     { label: 'FROST NOVA', symbol: '❄️' },
+    'smoke-bomb':     { label: 'SMOKE BOMB', symbol: '💨' },
+    'blink-strike':   { label: 'BLINK STRIKE', symbol: '✨' },
+    'shield-matrix':  { label: 'SHIELD MATRIX', symbol: '🛡️' },
+    'healing-bloom':  { label: 'HEALING BLOOM', symbol: '🌸' },
+    'thorn-armor':    { label: 'THORN ARMOR', symbol: '🌿' },
+    'gravity-pulse':  { label: 'GRAVITY PULSE', symbol: '🟣' },
+    overclock:        { label: 'OVERCLOCK', symbol: '⚡' },
+    ricochet:         { label: 'RICOCHET ORB', symbol: '🔵' },
+    'position-swap':  { label: 'POSITION SWAP', symbol: '🔀' },
+    'life-drain':     { label: 'LIFE DRAIN', symbol: '🩸' },
+    'wall-cage':      { label: 'WALL CAGE', symbol: '🧱' },
+  }
+  const FIGHTER_POWERS = {
+    SGD: ['frost-nova', 'smoke-bomb'],
+    ADAM: ['blink-strike', 'shield-matrix'],
+    RMSPROP: ['healing-bloom', 'thorn-armor'],
+    MOMENTUM: ['gravity-pulse', 'overclock'],
+    ADAGRAD: ['ricochet', 'position-swap'],
+    oLSTM: ['life-drain', 'wall-cage'],
+  }
+
   const EAT_LINES = [
     'nom.',
     'hand-tuned and delicious.',
@@ -751,6 +777,14 @@
       this.talkReadyAt = performance.now() + rand(3500, 9000)
       this.frozenUntil = 0
       this.revealedUntil = 0
+      this.smokeUntil = 0
+      this.hasteUntil = 0
+      this.thornsUntil = 0
+      this.shield = 0
+      this.shieldUntil = 0
+      this.powerIndex = 0
+      this.pendingPower = null
+      this.powerReadyAt = performance.now() + rand(3800, 6800)
       this.behaviorReadyAt = this.behavior === 'flee'
         ? 0
         : performance.now() + rand(2600, 5200)
@@ -769,6 +803,7 @@
       this.el.classList.remove('dead')
       this.el.classList.remove('cloaked')
       this.el.classList.remove('night-hidden')
+      this.el.classList.remove('shielded', 'overclocked', 'thorned')
       // undo an "eaten" exit
       this.el.style.display = ''
       this.el.style.transition = ''
@@ -1245,6 +1280,153 @@
     setTimeout(() => el.remove(), 950)
   }
 
+  function healFighter(fighter, amount, symbol = '🌸') {
+    if (!fighter.alive) return
+    const healed = Math.min(amount, fighter.hpMax - fighter.hp)
+    fighter.hp += healed
+    fighter.updateHp()
+    powerBurst(fighter, symbol)
+    fighter.floatText(`+${Math.round(healed)} HP`)
+  }
+
+  function useBonusPower(shooter, type, target) {
+    const power = BONUS_POWERS[type]
+    const now = performance.now()
+    shooter.yell(`${power.symbol} ${power.label}!`, 1800)
+    shooter.revealedUntil = now + 1800
+
+    switch (type) {
+      case 'frost-nova': {
+        powerBurst(shooter, power.symbol)
+        for (const victim of livingEnemies(shooter)) {
+          if (Math.hypot(victim.cx() - shooter.cx(), victim.cy() - shooter.cy()) > 370) continue
+          victim.frozenUntil = now + 1600
+          hit(shooter, victim, { dmg: 8, knock: 260, sparkClass: 'snow' })
+        }
+        break
+      }
+
+      case 'smoke-bomb':
+        shooter.smokeUntil = now + 4200
+        shooter.el.classList.add('cloaked')
+        powerBurst(shooter, power.symbol)
+        setTimeout(() => {
+          if (performance.now() >= shooter.smokeUntil && shooter.state !== 'cloak') {
+            shooter.el.classList.remove('cloaked')
+          }
+        }, 4300)
+        break
+
+      case 'blink-strike': {
+        if (!target || !target.alive) break
+        const dir = dirBetween(shooter.cx(), shooter.cy(), target.cx(), target.cy())
+        const offset = target.size * 0.42 + shooter.size * 0.3
+        shooter.x = clamp(target.cx() + dir.x * offset - shooter.size / 2, 0, W() - shooter.size)
+        shooter.y = clamp(target.cy() + dir.y * offset - shooter.size / 2, TOP_MARGIN, H() - shooter.size)
+        shooter.place()
+        powerBurst(shooter, power.symbol)
+        hit(shooter, target, { dmg: 13, knock: 380 })
+        break
+      }
+
+      case 'shield-matrix':
+        shooter.shield = Math.min(65, shooter.shield + 36)
+        shooter.shieldUntil = now + 6200
+        shooter.el.classList.add('shielded')
+        powerBurst(shooter, power.symbol)
+        setTimeout(() => {
+          if (performance.now() >= shooter.shieldUntil) {
+            shooter.shield = 0
+            shooter.el.classList.remove('shielded')
+          }
+        }, 6300)
+        break
+
+      case 'healing-bloom':
+        healFighter(shooter, 34, power.symbol)
+        break
+
+      case 'thorn-armor':
+        shooter.thornsUntil = now + 6200
+        shooter.el.classList.add('thorned')
+        powerBurst(shooter, power.symbol)
+        setTimeout(() => {
+          if (performance.now() >= shooter.thornsUntil) shooter.el.classList.remove('thorned')
+        }, 6300)
+        break
+
+      case 'gravity-pulse':
+        powerBurst(shooter, power.symbol)
+        for (const victim of livingEnemies(shooter)) {
+          const outward = dirBetween(shooter.cx(), shooter.cy(), victim.cx(), victim.cy())
+          if (outward.d > 500) continue
+          hit(shooter, victim, { dmg: 7, knock: 900, dir: outward, sparkClass: 'cosmic' })
+        }
+        break
+
+      case 'overclock':
+        shooter.hasteUntil = now + 5600
+        shooter.el.classList.add('overclocked')
+        shooter.buildReadyAt = Math.min(shooter.buildReadyAt, now + 700)
+        shooter.specialReadyAt = Math.min(shooter.specialReadyAt, now + 700)
+        powerBurst(shooter, power.symbol)
+        setTimeout(() => {
+          if (performance.now() >= shooter.hasteUntil) shooter.el.classList.remove('overclocked')
+        }, 5700)
+        break
+
+      case 'ricochet': {
+        const victims = livingEnemies(shooter)
+          .sort((a, b) =>
+            Math.hypot(a.cx() - shooter.cx(), a.cy() - shooter.cy()) -
+            Math.hypot(b.cx() - shooter.cx(), b.cy() - shooter.cy()))
+          .slice(0, 3)
+        victims.forEach((victim, index) => setTimeout(() => {
+          if (!victim.alive) return
+          powerBurst(victim, power.symbol)
+          hit(shooter, victim, { dmg: 9, knock: 330, sparkClass: 'electric' })
+        }, index * 150))
+        break
+      }
+
+      case 'position-swap': {
+        if (!target || !target.alive) break
+        const shooterPosition = { x: shooter.x, y: shooter.y }
+        shooter.x = clamp(target.x, 0, W() - shooter.size)
+        shooter.y = clamp(target.y, TOP_MARGIN, H() - shooter.size)
+        target.x = clamp(shooterPosition.x, 0, W() - target.size)
+        target.y = clamp(shooterPosition.y, TOP_MARGIN, H() - target.size)
+        shooter.place()
+        target.place()
+        powerBurst(shooter, power.symbol)
+        powerBurst(target, power.symbol)
+        break
+      }
+
+      case 'life-drain':
+        if (!target || !target.alive) break
+        powerBurst(target, power.symbol)
+        hit(shooter, target, { dmg: 15, knock: 120, sparkClass: 'cosmic' })
+        healFighter(shooter, 18, power.symbol)
+        break
+
+      case 'wall-cage': {
+        if (!target || !target.alive) break
+        const cageSize = Math.min(270, target.size * 0.65 + 90)
+        const thickness = 22
+        const cx = target.cx()
+        const cy = target.cy()
+        addWallSegment(shooter, cx - cageSize / 2, cy, thickness, cageSize, 'CAGE')
+        addWallSegment(shooter, cx + cageSize / 2, cy, thickness, cageSize, 'CAGE')
+        addWallSegment(shooter, cx, cy - cageSize / 2, cageSize, thickness, 'CAGE')
+        addWallSegment(shooter, cx, cy + cageSize / 2, cageSize, thickness, 'CAGE')
+        while (walls.length > MAX_WALLS) removeWall(walls[0])
+        powerBurst(target, power.symbol)
+        break
+      }
+    }
+  }
+
   function useUltimate(shooter) {
     const ultimate = shooter.weapon.ultimate
     const victims = livingEnemies(shooter)
@@ -1392,8 +1574,14 @@
     return Math.hypot(fighter.cx() - boss.cx(), fighter.cy() - boss.cy()) > detectionRange
   }
 
+  function isHiddenBySmoke(fighter, observer, now = performance.now()) {
+    if (now >= fighter.smokeUntil) return false
+    return Math.hypot(fighter.cx() - observer.cx(), fighter.cy() - observer.cy()) > 180
+  }
+
   function livingEnemies(f) {
-    const enemies = fighters.filter((o) => o !== f && o.alive)
+    const enemies = fighters.filter((o) =>
+      o !== f && o.alive && !isHiddenBySmoke(o, f))
     return f.name === 'oLSTM'
       ? enemies.filter((fighter) => !isHiddenFromBoss(fighter, f))
       : enemies
@@ -1423,21 +1611,38 @@
   }
 
   function hit(attacker, victim, opts = {}) {
-    attacker.revealedUntil = performance.now() + 2200
+    const now = performance.now()
+    attacker.revealedUntil = now + 2200
     attacker.el.classList.remove('night-hidden')
+    if (attacker.smokeUntil > now) {
+      attacker.smokeUntil = 0
+      attacker.el.classList.remove('cloaked')
+    }
     const w = attacker.weapon
     const crit = Math.random() < 0.15
     let base = opts.dmg !== undefined ? opts.dmg : rand(w.dmg[0], w.dmg[1])
-    const dmg = Math.round(crit ? base * 1.8 : base)
+    let dmg = Math.round(crit ? base * 1.8 : base)
+    if (now >= victim.shieldUntil) {
+      victim.shield = 0
+      victim.el.classList.remove('shielded')
+    }
+    const absorbed = Math.min(dmg, victim.shield)
+    if (absorbed) {
+      victim.shield -= absorbed
+      dmg -= absorbed
+      victim.floatText(`SHIELD −${absorbed}`)
+      if (victim.shield <= 0) victim.el.classList.remove('shielded')
+    }
     // mass: big fighters barely budge
     const knock = (opts.knock !== undefined ? opts.knock : w.knock) *
       (crit ? 1.6 : 1) * (160 / victim.size)
     victim.hp -= dmg
+    victim.smokeUntil = 0
     victim.el.classList.remove('cloaked')
     victim.inner.style.opacity = '1'
     victim.updateHp()
     victim.sparks(crit ? 12 : 7, opts.sparkClass || (opts.fire ? 'fire' : ''))
-    victim.floatText((crit ? 'CRIT −' : '−') + dmg, crit ? 'crit' : '')
+    victim.floatText(dmg ? (crit ? 'CRIT −' : '−') + dmg : 'BLOCKED', crit && dmg ? 'crit' : '')
     const dir = opts.dir || dirBetween(attacker.cx(), attacker.cy(), victim.cx(), victim.cy())
     victim.vx += dir.x * knock
     victim.vy += dir.y * knock - 150
@@ -1445,7 +1650,15 @@
     attacker.vy -= dir.y * (opts.dir ? 0 : 180)
     victim.setMood('worried')
     victim.state = 'hitstun'
-    victim.stateUntil = performance.now() + 450
+    victim.stateUntil = now + 450
+    if (now < victim.thornsUntil && attacker.alive && dmg > 0) {
+      const reflected = Math.max(1, Math.round(dmg * 0.35))
+      attacker.hp -= reflected
+      attacker.updateHp()
+      attacker.floatText(`THORNS −${reflected}`)
+      powerBurst(attacker, '🌿')
+      if (attacker.hp <= 0) attacker.die()
+    }
     if (victim.hp <= 0) {
       victim.die()
       attacker.say(TAUNTS[Math.floor(Math.random() * TAUNTS.length)], 2400)
@@ -1532,6 +1745,13 @@
       f.el.classList.toggle('night-hidden', Boolean(
         nightBoss && f !== nightBoss && isHiddenFromBoss(f, nightBoss, now),
       ))
+      if (now >= f.smokeUntil && f.state !== 'cloak') f.el.classList.remove('cloaked')
+      if (now >= f.hasteUntil) f.el.classList.remove('overclocked')
+      if (now >= f.thornsUntil) f.el.classList.remove('thorned')
+      if (now >= f.shieldUntil) {
+        f.shield = 0
+        f.el.classList.remove('shielded')
+      }
 
       if (now < f.frozenUntil) {
         f.setPose(null)
@@ -1568,6 +1788,21 @@
               f.ultimateReadyAt = now + rand(f.weapon.ultimate.cooldown[0], f.weapon.ultimate.cooldown[1])
               f.setPose('windup')
               f.yell('ULTIMATE ONLINE!', 1600)
+            } else if (f.weapon.special && now >= f.specialReadyAt) {
+              f.state = 'special-windup'
+              f.stateUntil = now + f.weapon.special.windup
+              f.specialReadyAt = now + rand(f.weapon.special.cooldown[0], f.weapon.special.cooldown[1])
+              f.setPose('windup')
+              f.say(['geyser', 'tsunami', 'trees'].includes(f.weapon.special.type) ? 'global optimization.' : 'warming up…', 1800)
+            } else if (now >= f.powerReadyAt) {
+              const powers = FIGHTER_POWERS[f.name]
+              f.pendingPower = powers[f.powerIndex % powers.length]
+              f.powerIndex++
+              f.powerReadyAt = now + rand(11000, 16000)
+              f.state = 'bonus-windup'
+              f.stateUntil = now + rand(380, 620)
+              f.setPose('windup')
+              f.say(BONUS_POWERS[f.pendingPower].label.toLowerCase() + '…', 1500)
             } else if (now >= f.buildReadyAt) {
               f.target = f !== boss && boss ? boss : nearest
               f.state = 'build-windup'
@@ -1575,12 +1810,6 @@
               f.buildReadyAt = now + rand(7200, 11000)
               f.setPose('windup')
               f.say(f !== boss && boss ? 'fortifying against the boss!' : 'building cover!', 1700)
-            } else if (f.weapon.special && now >= f.specialReadyAt) {
-              f.state = 'special-windup'
-              f.stateUntil = now + f.weapon.special.windup
-              f.specialReadyAt = now + rand(f.weapon.special.cooldown[0], f.weapon.special.cooldown[1])
-              f.setPose('windup')
-              f.say(['geyser', 'tsunami', 'trees'].includes(f.weapon.special.type) ? 'global optimization.' : 'warming up…', 1800)
             } else if (f.behavior === 'flee') {
               f.state = 'flee'
               f.setPose('walking')
@@ -1629,6 +1858,17 @@
             }
             f.state = 'recover'
             f.stateUntil = now + rand(800, 1300)
+            f.setPose('idle')
+          }
+          break
+        }
+        case 'bonus-windup': {
+          if (now >= f.stateUntil) {
+            const target = f.target && f.target.alive ? f.target : nearest
+            useBonusPower(f, f.pendingPower, target)
+            f.pendingPower = null
+            f.state = 'recover'
+            f.stateUntil = now + rand(550, 900)
             f.setPose('idle')
           }
           break
@@ -1701,7 +1941,7 @@
           }
           const dir = dirBetween(f.cx(), f.cy(), t.cx(), t.cy())
           const attackRange = f.weapon.ranged ? f.weapon.range : (f.size + t.size) * 0.48
-          const accel = 1400 * (160 / f.size) // the big one lumbers
+          const accel = 1400 * (160 / f.size) * (now < f.hasteUntil ? 1.65 : 1) // the big one lumbers
           if (f.behavior === 'teleport' && dir.d < f.weapon.tooClose && now >= f.behaviorReadyAt) {
             f.state = 'teleport'
             f.stateUntil = now + 260

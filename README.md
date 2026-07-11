@@ -37,6 +37,8 @@ The menu-bar tray (❊ maxy) has commands: _Say something_, _Do a trick_, _Gradi
 
 Set `MAXY_MODE=battle` to run the optimizer arena instead of the desktop companion. Fighters periodically unleash distinct specials: SGD sweeps the screen with a damaging tsunami, RMSPROP sprouts five collision-damage trees, MOMENTUM throws a three-snowball volley, ADAGRAD breathes ranged fireballs, and oLSTM fires a screen-wide inferno geyser that damages every living opponent. On multi-display Macs, set `MAXY_DISPLAY=left` or `MAXY_DISPLAY=right` to choose the screen.
 
+Each fighter also cycles through two secondary powers: SGD uses Frost Nova and Smoke Bomb; ADAM uses Blink Strike and Shield Matrix; RMSPROP uses Healing Bloom and Thorn Armor; MOMENTUM uses Gravity Pulse and Overclock; ADAGRAD uses Ricochet Orb and Position Swap; and oLSTM uses Life Drain and Wall Cage. These twelve powers share a separate cooldown from weapons, specials, ultimates, and construction.
+
 Movement personalities make the arena less predictable: SGD continuously flees from the other fighters, ADAM briefly cloaks while escaping, and ADAGRAD defensively teleports to the safest sampled screen position when an opponent gets too close.
 
 Every fighter also builds temporary, projectile-blocking fortifications. Builders cycle through connected corners, gated corridors, zigzags, and three-sided forts to create a changing maze with intentional openings. Fighters steer toward the shortest wall endpoint instead of pressing into barriers, while non-oLSTM fighters preferentially fortify against the boss. The boss can smash through walls, ordinary projectiles damage and stop on impact, and walls expire automatically or clear between rounds.
