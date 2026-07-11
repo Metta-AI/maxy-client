@@ -260,6 +260,15 @@
   }
   .wall.cracked { opacity: 0.72; filter: saturate(0.45) !important; }
   .wall.hit { box-shadow: inset 0 0 0 3px #fff4bd, 0 0 14px #ffc44d; }
+  .wall::after {
+    content: attr(data-owner);
+    position: absolute;
+    right: 3px;
+    bottom: 2px;
+    color: rgba(255, 255, 255, 0.48);
+    font: 700 7px ui-monospace, 'SF Mono', monospace;
+    letter-spacing: 0.08em;
+  }
   @keyframes wall-build {
     from { opacity: 0; transform: scale(0.2); }
     to { opacity: 1; transform: scale(1); }
@@ -714,7 +723,8 @@
       this.vy = 0
       this.shots = 0
       this.wallsBuilt = 0
-      this.buildReadyAt = performance.now() + rand(1800, 4200)
+      this.fortsBuilt = 0
+      this.buildReadyAt = performance.now() + rand(2200, 4800)
       this.talkReadyAt = performance.now() + rand(3500, 9000)
       this.frozenUntil = 0
       this.behaviorReadyAt = this.behavior === 'flee'
@@ -848,7 +858,7 @@
 
   const fighters = ROSTER.map((spec, i) => new Fighter(spec, i))
   const walls = []
-  const MAX_WALLS = 36
+  const MAX_WALLS = 54
   let round = 1
   let roundOver = false
 
@@ -873,25 +883,13 @@
     walls.length = 0
   }
 
-  function buildWall(builder, threat) {
-    const toward = threat
-      ? dirBetween(builder.cx(), builder.cy(), threat.cx(), threat.cy())
-      : { x: Math.random() < 0.5 ? -1 : 1, y: 0, d: 1 }
-    let vertical = Math.abs(toward.x) >= Math.abs(toward.y)
-    // Every third segment turns the corner, producing forts and maze pockets.
-    if (builder.wallsBuilt % 3 === 2) vertical = !vertical
-    const length = rand(125, 185)
-    const thickness = 24
-    const width = vertical ? thickness : length
-    const height = vertical ? length : thickness
-    const distance = builder.size * 0.4 + 58
-    const centerX = builder.cx() + toward.x * distance
-    const centerY = builder.cy() + toward.y * distance
+  function addWallSegment(builder, centerX, centerY, width, height, pattern) {
     const x = clamp(centerX - width / 2, 8, Math.max(8, W() - width - 8))
     const y = clamp(centerY - height / 2, TOP_MARGIN, Math.max(TOP_MARGIN, H() - height - 8))
-
     const el = document.createElement('div')
     el.className = 'wall'
+    el.dataset.owner = builder.name
+    el.dataset.pattern = pattern
     el.style.left = x + 'px'
     el.style.top = y + 'px'
     el.style.width = width + 'px'
@@ -901,17 +899,66 @@
     walls.push({
       el,
       builder,
+      pattern,
       x,
       y,
       width,
       height,
       hp: 3,
-      dieAt: performance.now() + rand(24000, 34000),
+      dieAt: performance.now() + rand(30000, 44000),
       lastBossHitAt: 0,
     })
     builder.wallsBuilt++
+  }
+
+  function buildWall(builder, threat) {
+    const toward = threat
+      ? dirBetween(builder.cx(), builder.cy(), threat.cx(), threat.cy())
+      : { x: Math.random() < 0.5 ? -1 : 1, y: 0, d: 1 }
+    const vertical = Math.abs(toward.x) >= Math.abs(toward.y)
+    const pattern = ['CORNER', 'GATE', 'ZIGZAG', 'FORT'][builder.fortsBuilt % 4]
+    const length = 150
+    const thickness = 24
+    const distance = builder.size * 0.4 + 58
+    const anchorX = builder.cx() + toward.x * distance
+    const anchorY = builder.cy() + toward.y * distance
+    const retreat = -(vertical ? Math.sign(toward.x || 1) : Math.sign(toward.y || 1))
+    const base = []
+
+    if (pattern === 'CORNER') {
+      base.push({ dx: 0, dy: 0, width: thickness, height: length })
+      base.push({ dx: retreat * length / 2, dy: length / 2, width: length, height: thickness })
+    } else if (pattern === 'GATE') {
+      const gap = 68
+      const half = 70
+      base.push({ dx: 0, dy: -(gap + half) / 2, width: thickness, height: half })
+      base.push({ dx: 0, dy: (gap + half) / 2, width: thickness, height: half })
+    } else if (pattern === 'ZIGZAG') {
+      base.push({ dx: 0, dy: -length / 4, width: thickness, height: length / 2 })
+      base.push({ dx: retreat * length / 2, dy: 0, width: length, height: thickness })
+      base.push({ dx: retreat * length, dy: length / 4, width: thickness, height: length / 2 })
+    } else {
+      base.push({ dx: 0, dy: 0, width: thickness, height: length })
+      base.push({ dx: retreat * length / 2, dy: -length / 2, width: length, height: thickness })
+      base.push({ dx: retreat * length / 2, dy: length / 2, width: length, height: thickness })
+    }
+
+    for (const segment of base) {
+      const transformed = vertical
+        ? segment
+        : { dx: segment.dy, dy: segment.dx, width: segment.height, height: segment.width }
+      addWallSegment(
+        builder,
+        anchorX + transformed.dx,
+        anchorY + transformed.dy,
+        transformed.width,
+        transformed.height,
+        pattern,
+      )
+    }
+    builder.fortsBuilt++
     builder.sparks(7)
-    builder.floatText('BUILD')
+    builder.floatText(pattern)
     while (walls.length > MAX_WALLS) removeWall(walls[0])
   }
 
@@ -919,6 +966,33 @@
     return walls.find((wall) =>
       x >= wall.x - radius && x <= wall.x + wall.width + radius &&
       y >= wall.y - radius && y <= wall.y + wall.height + radius)
+  }
+
+  function steerAroundWalls(fighter, desired, target = null) {
+    const radius = fighter.size * 0.28
+    const probeDistance = radius + 72
+    const wall = pointHitsWall(
+      fighter.cx() + desired.x * probeDistance,
+      fighter.cy() + desired.y * probeDistance,
+      radius * 0.35,
+    )
+    if (!wall) return desired
+
+    const margin = radius + 34
+    const candidates = wall.height > wall.width
+      ? [
+          { x: wall.x + wall.width / 2, y: wall.y - margin },
+          { x: wall.x + wall.width / 2, y: wall.y + wall.height + margin },
+        ]
+      : [
+          { x: wall.x - margin, y: wall.y + wall.height / 2 },
+          { x: wall.x + wall.width + margin, y: wall.y + wall.height / 2 },
+        ]
+    const score = (point) =>
+      Math.hypot(point.x - fighter.cx(), point.y - fighter.cy()) +
+      (target ? Math.hypot(point.x - target.cx(), point.y - target.cy()) * 0.65 : 0)
+    const waypoint = candidates.reduce((a, b) => (score(a) < score(b) ? a : b))
+    return dirBetween(fighter.cx(), fighter.cy(), waypoint.x, waypoint.y)
   }
 
   function resolveWallCollisions(fighter, now) {
@@ -1453,7 +1527,7 @@
               f.target = f !== boss && boss ? boss : nearest
               f.state = 'build-windup'
               f.stateUntil = now + rand(320, 520)
-              f.buildReadyAt = now + rand(4800, 7600)
+              f.buildReadyAt = now + rand(7200, 11000)
               f.setPose('windup')
               f.say(f !== boss && boss ? 'fortifying against the boss!' : 'building cover!', 1700)
             } else if (f.weapon.special && now >= f.specialReadyAt) {
@@ -1530,9 +1604,10 @@
             awayY = fromCenter.y
             magnitude = 1
           }
-          f.vx += (awayX / magnitude) * 1900 * dt
-          f.vy += (awayY / magnitude) * 1900 * dt
-          f.inner.style.transform = `rotate(${clamp((awayX / magnitude) * 8, -8, 8)}deg)`
+          const escape = steerAroundWalls(f, { x: awayX / magnitude, y: awayY / magnitude })
+          f.vx += escape.x * 1900 * dt
+          f.vy += escape.y * 1900 * dt
+          f.inner.style.transform = `rotate(${clamp(escape.x * 8, -8, 8)}deg)`
           if (f.weapon.special && now >= f.specialReadyAt) {
             f.state = 'idle'
             f.stateUntil = now
@@ -1592,9 +1667,10 @@
             f.stateUntil = now + f.weapon.windup
             f.setPose('windup')
           } else {
-            f.vx += dir.x * accel * dt
-            f.vy += dir.y * accel * dt
-            f.inner.style.transform = `rotate(${clamp(dir.x * 8, -8, 8)}deg)`
+            const move = steerAroundWalls(f, dir, t)
+            f.vx += move.x * accel * dt
+            f.vy += move.y * accel * dt
+            f.inner.style.transform = `rotate(${clamp(move.x * 8, -8, 8)}deg)`
           }
           break
         }

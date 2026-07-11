@@ -39,7 +39,7 @@ Set `MAXY_MODE=battle` to run the optimizer arena instead of the desktop compani
 
 Movement personalities make the arena less predictable: SGD continuously flees from the other fighters, ADAM briefly cloaks while escaping, and ADAGRAD defensively teleports to the safest sampled screen position when an opponent gets too close.
 
-Every fighter also builds temporary, projectile-blocking walls. Non-oLSTM fighters preferentially fortify against the boss, turn every third segment to form maze-like pockets, and steer away from oLSTM behind their cover. The boss can smash through walls, while ordinary projectiles damage and stop on impact. Walls expire automatically and are cleared between rounds.
+Every fighter also builds temporary, projectile-blocking fortifications. Builders cycle through connected corners, gated corridors, zigzags, and three-sided forts to create a changing maze with intentional openings. Fighters steer toward the shortest wall endpoint instead of pressing into barriers, while non-oLSTM fighters preferentially fortify against the boss. The boss can smash through walls, ordinary projectiles damage and stop on impact, and walls expire automatically or clear between rounds.
 
 The arena runs through a one-minute day/night cycle with an orbiting sun and moon, dusk and dawn transitions, and a star field at night. Every fighter has a second long-cooldown ultimate: chain lightning, time stop, earthquake, tornado, meteor storm, or black hole. Fighters shout contextual challenges at nearby rivals and also reuse the normal companion's full 18-quote comedy rotation.
 
