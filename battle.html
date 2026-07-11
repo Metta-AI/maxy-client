@@ -727,6 +727,126 @@
     "gt log short says you haven't committed in a while. Just saying.",
     "Curiosity-driven exploration brought me here. Now I'm curious about your snacks.",
   ]
+  const BOT_QUOTES = {
+    SGD: [
+      "Tiny steps. Huge confidence.",
+      "I only need one learning rate and a dream.",
+      "No fancy moments. Just gradients.",
+      "I brought noise. It builds character.",
+      "One sample at a time, everyone.",
+      "My path is wobbly but honest.",
+      "Every update is a fresh start.",
+      "Batch size one means never waiting.",
+      "I zig because the gradient zagged.",
+      "Simple optimizer, complicated feelings.",
+      "Catch me before I take another step.",
+      "I run on raw feedback and optimism.",
+      "That direction looked downhill enough.",
+      "Variance is just surprise with math.",
+      "I may oscillate, but I never hesitate.",
+      "My convergence plan is mostly cardio.",
+      "Fresh gradient! Everybody move!",
+    ],
+    ADAM: [
+      "I adapted before you finished that sentence.",
+      "First moment ready. Second moment ready.",
+      "Your learning rate is now my learning rate.",
+      "I keep receipts for every gradient.",
+      "Bias corrected and battle tested.",
+      "Two moving averages enter. I leave.",
+      "Adaptive is another word for prepared.",
+      "My epsilon is small. My ambition is not.",
+      "I normalize chaos for breakfast.",
+      "That attack had terrible conditioning.",
+      "I have a parameter for this exact situation.",
+      "Your spike is already in my average.",
+      "I make every coordinate feel special.",
+      "Momentum in one hand, scaling in the other.",
+      "I saw that gradient coming two moments ago.",
+      "Default settings, premium confidence.",
+      "Adapt, attack, update, repeat.",
+    ],
+    RMSPROP: [
+      "Square the gradient. Respect the hammer.",
+      "I brought a root mean square and a big mallet.",
+      "Your recent history looks painful.",
+      "I scale coordinates and flatten opponents.",
+      "The average says this is going to hurt.",
+      "Nonstationary problem, stationary hammer.",
+      "My denominator has excellent instincts.",
+      "I smooth the noise, then make some more.",
+      "Running average, running toward you.",
+      "Every coordinate gets the bonk it deserves.",
+      "Your gradient magnitude has been noted.",
+      "I decay memories, not grudges.",
+      "Stable steps. Unstable battlefield.",
+      "The square root makes it scientific.",
+      "Recent gradients vote for violence.",
+      "My moving average carries a large hammer.",
+      "Normalize this!",
+    ],
+    MOMENTUM: [
+      "Once I start moving, paperwork cannot stop me.",
+      "Velocity is just confidence with direction.",
+      "I remember where I was going.",
+      "This update has follow-through.",
+      "Friction filed a complaint.",
+      "I overshot on purpose. It looked dramatic.",
+      "My past gradients are pushing me forward.",
+      "You dodge. I keep the velocity.",
+      "Inertia is my co-pilot.",
+      "I came in like a well-tuned coefficient.",
+      "The next step started three steps ago.",
+      "I do not turn quickly. I turn decisively.",
+      "Acceleration now, explanations later.",
+      "My trajectory has plot armor.",
+      "That wall is about to learn momentum.",
+      "I bank gradients for a rainy sprint.",
+      "Full speed down the loss surface!",
+    ],
+    ADAGRAD: [
+      "Every rare feature gets its moment.",
+      "I saved this learning rate for you.",
+      "My steps shrink, but my aim improves.",
+      "Sparse gradients are still invited.",
+      "I remember every squared gradient forever.",
+      "Early confidence, late precision.",
+      "My accumulator never forgets.",
+      "One coordinate at a time, please.",
+      "The frequent features have had enough attention.",
+      "I specialize in long-term consequences.",
+      "That shot cost less learning rate than expected.",
+      "History says take a smaller step.",
+      "My arrows are inversely proportional to regret.",
+      "Rare event detected. Bow raised.",
+      "I brought per-parameter patience.",
+      "Accumulated wisdom, freshly launched.",
+    ],
+    oLSTM: [
+      "I learned how to optimize the optimizers.",
+      "Your update rule is merely an appetizer.",
+      "I remember battles you have not fought yet.",
+      "Hand-designed heuristics taste nostalgic.",
+      "My hidden state contains your escape route.",
+      "I have gates. You have suggestions.",
+      "The curriculum prepared me for this snack.",
+      "I backpropagate through your confidence.",
+      "Your baseline is showing.",
+      "I was trained on losses like you.",
+      "My cell state says you are delicious.",
+      "Why tune an optimizer when you can become one?",
+      "I generalize from every bite.",
+      "Your gradients are now training data.",
+      "The outer loop sends its regards.",
+      "Learned behavior beats handwritten courage.",
+    ],
+  }
+
+  function fighterQuote(fighter) {
+    const personal = BOT_QUOTES[fighter.name]
+    const pool = Math.random() < 0.78 ? personal : FUN_QUOTES
+    return pool[Math.floor(Math.random() * pool.length)]
+  }
   const ULTIMATE_LINES = {
     lightning: 'CHAIN LIGHTNING!',
     'time-stop': 'TIME BELONGS TO ADAM!',
@@ -1768,7 +1888,10 @@
       f.lookAt(nearest)
       f.setFacing(f.target && f.target.alive ? f.target : nearest)
       if (!roundOver && nearest && now >= f.talkReadyAt) {
-        if (Math.random() < 0.55) {
+        const chatterRoll = Math.random()
+        if (chatterRoll < 0.7) {
+          f.say(fighterQuote(f), 3600)
+        } else if (chatterRoll < 0.85) {
           f.say(FUN_QUOTES[Math.floor(Math.random() * FUN_QUOTES.length)], 3600)
         } else {
           const line = CHAT_LINES[Math.floor(Math.random() * CHAT_LINES.length)]
