@@ -41,7 +41,9 @@ Movement personalities make the arena less predictable: SGD continuously flees f
 
 Every fighter also builds temporary, projectile-blocking walls. Non-oLSTM fighters preferentially fortify against the boss, turn every third segment to form maze-like pockets, and steer away from oLSTM behind their cover. The boss can smash through walls, while ordinary projectiles damage and stop on impact. Walls expire automatically and are cleared between rounds.
 
-The main-room setup can also run fully local speech echo. Start each client with a distinct `MAXY_ECHO_PORT`, then run `./echo_start.sh`; the on-device transcriber posts recognized speech to both clients, where a random living fighter repeats it. Audio chunks and transcripts are discarded rather than stored. The listener expects Homebrew `ffmpeg` and `whisper-cli`, with its model at `~/maxy-echo/models/ggml-base.en.bin` by default.
+The arena runs through a one-minute day/night cycle with an orbiting sun and moon, dusk and dawn transitions, and a star field at night. Every fighter has a second long-cooldown ultimate: chain lightning, time stop, earthquake, tornado, meteor storm, or black hole. Fighters also shout contextual challenges at nearby rivals.
+
+The main-room setup can also run fully local speech interaction. Start each client with a distinct `MAXY_ECHO_PORT`, then run `./echo_start.sh`; the on-device transcriber posts recognized speech to both clients, where a random living fighter gives a short contextual response. Audio chunks and transcripts are discarded rather than stored. The listener expects Homebrew `ffmpeg` and `whisper-cli`, with its model at `~/maxy-echo/models/ggml-base.en.bin` by default.
 
 ## How it works
 

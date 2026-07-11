@@ -13,6 +13,53 @@
     cursor: default;
   }
 
+  #sky {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(120, 205, 255, 0.2), rgba(255, 226, 150, 0.08));
+    transition: background 3s ease;
+  }
+  body.night #sky {
+    background: linear-gradient(180deg, rgba(2, 8, 35, 0.7), rgba(18, 31, 73, 0.38));
+  }
+  #stars { position: absolute; inset: 0; opacity: 0; transition: opacity 3s ease; }
+  body.night #stars { opacity: 1; }
+  .star {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #fffde0;
+    box-shadow: 0 0 7px #d8e7ff;
+    animation: twinkle var(--twinkle) ease-in-out infinite alternate;
+  }
+  @keyframes twinkle { from { opacity: 0.25; } to { opacity: 1; transform: scale(1.7); } }
+  .celestial {
+    position: absolute;
+    width: 92px;
+    height: 92px;
+    margin: -46px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 64px;
+    transition: opacity 2s ease;
+  }
+  #sun { filter: drop-shadow(0 0 25px #ffd65a); }
+  #moon { filter: drop-shadow(0 0 20px #b9cbff); }
+  #time-label {
+    position: absolute;
+    top: 18px;
+    right: 24px;
+    color: rgba(255, 250, 230, 0.88);
+    font: 700 12px ui-monospace, 'SF Mono', monospace;
+    letter-spacing: 0.14em;
+    text-shadow: 0 1px 4px #0e2758;
+  }
+
   .fighter {
     position: absolute;
     left: 0;
@@ -218,6 +265,43 @@
     to { opacity: 1; transform: scale(1); }
   }
 
+  .ultimate-effect {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    font-size: min(30vw, 310px);
+    text-shadow: 0 0 35px currentColor;
+    animation: ultimate-flash 1.8s ease-out forwards;
+  }
+  .ultimate-effect.lightning { color: #fff36b; background: rgba(87, 102, 255, 0.2); }
+  .ultimate-effect.time-stop { color: #bff5ff; background: rgba(45, 184, 235, 0.24); }
+  .ultimate-effect.earthquake { color: #9b6d3c; background: rgba(112, 61, 24, 0.24); }
+  .ultimate-effect.tornado { color: #d9f7ff; background: rgba(135, 205, 221, 0.2); }
+  .ultimate-effect.meteor { color: #ff7a29; background: rgba(111, 16, 7, 0.24); }
+  .ultimate-effect.black-hole { color: #b895ff; background: rgba(13, 2, 31, 0.62); }
+  @keyframes ultimate-flash {
+    0% { opacity: 0; transform: scale(0.2) rotate(-18deg); }
+    22% { opacity: 1; transform: scale(1.08) rotate(4deg); }
+    72% { opacity: 0.85; transform: scale(0.94) rotate(-2deg); }
+    100% { opacity: 0; transform: scale(1.35) rotate(8deg); }
+  }
+  .power-burst {
+    position: absolute;
+    z-index: 13;
+    font-size: 82px;
+    pointer-events: none;
+    filter: drop-shadow(0 0 16px currentColor);
+    animation: power-burst 900ms ease-out forwards;
+  }
+  @keyframes power-burst {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.25); }
+    28% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+    to { opacity: 0; transform: translate(-50%, -80%) scale(0.75); }
+  }
+
   .eye {
     transform-box: fill-box;
     transform-origin: center;
@@ -290,6 +374,14 @@
     z-index: 10;
   }
   .bubble.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .bubble.yell {
+    color: #8f1f12;
+    border: 2px solid #e56b34;
+    font-weight: 800;
+    font-size: 16px;
+    text-transform: uppercase;
+    box-shadow: 0 0 16px rgba(255, 97, 34, 0.5);
+  }
   .bubble::after {
     content: '';
     position: absolute;
@@ -337,6 +429,8 @@
   .spark.water { background: #b9f2ff; box-shadow: 0 0 14px 5px rgba(31, 154, 224, 0.85); }
   .spark.leaf { background: #8cc95f; box-shadow: 0 0 12px 4px rgba(45, 109, 28, 0.8); }
   .spark.snow { background: #f7fdff; box-shadow: 0 0 14px 5px rgba(152, 222, 255, 0.95); }
+  .spark.electric { background: #fff76a; box-shadow: 0 0 16px 6px rgba(118, 121, 255, 0.95); }
+  .spark.cosmic { background: #cf9dff; box-shadow: 0 0 18px 7px rgba(76, 28, 145, 0.95); }
   @keyframes sparkfly {
     from { opacity: 1; transform: translate(0, 0) scale(1); }
     to   { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
@@ -366,6 +460,12 @@
 </style>
 </head>
 <body>
+<div id="sky" aria-hidden="true">
+  <div id="stars"></div>
+  <div id="sun" class="celestial">☀️</div>
+  <div id="moon" class="celestial">🌙</div>
+  <div id="time-label">DAY</div>
+</div>
 <div id="banner"></div>
 
 <template id="maxyTemplate">
@@ -427,6 +527,40 @@
     return { x: dx / d, y: dy / d, d }
   }
   const banner = document.getElementById('banner')
+  const sun = document.getElementById('sun')
+  const moon = document.getElementById('moon')
+  const timeLabel = document.getElementById('time-label')
+  const skyStartedAt = performance.now()
+  const DAY_CYCLE_MS = 60000
+
+  const stars = document.getElementById('stars')
+  for (let i = 0; i < 42; i++) {
+    const star = document.createElement('span')
+    star.className = 'star'
+    star.style.left = rand(2, 98) + '%'
+    star.style.top = rand(3, 70) + '%'
+    star.style.setProperty('--twinkle', rand(0.7, 2.4) + 's')
+    stars.appendChild(star)
+  }
+
+  function updateSky(now) {
+    const angle = Math.PI / 2 + ((now - skyStartedAt) % DAY_CYCLE_MS) / DAY_CYCLE_MS * Math.PI * 2
+    const sunHeight = Math.sin(angle)
+    const orbitX = W() * 0.58
+    const orbitY = H() * 0.36
+    sun.style.left = W() / 2 + Math.cos(angle) * orbitX + 'px'
+    sun.style.top = H() * 0.46 - sunHeight * orbitY + 'px'
+    moon.style.left = W() / 2 - Math.cos(angle) * orbitX + 'px'
+    moon.style.top = H() * 0.46 + sunHeight * orbitY + 'px'
+    sun.style.opacity = clamp((sunHeight + 0.16) * 2.4, 0, 1)
+    moon.style.opacity = clamp((-sunHeight + 0.16) * 2.4, 0, 1)
+    document.body.classList.toggle('night', sunHeight < 0.08)
+    timeLabel.textContent = sunHeight > 0.28
+      ? 'DAY'
+      : sunHeight < -0.28
+        ? 'NIGHT'
+        : Math.cos(angle) < 0 ? 'DUSK' : 'DAWN'
+  }
 
   const ROSTER = [
     { name: 'SGD',      hue: 0,   behavior: 'flee' },
@@ -445,24 +579,30 @@
   const WEAPONS = {
     SGD:      { emoji: '🏏', windup: 420, dashSpeed: 1150, dashMs: 320, dmg: [8, 15],  knock: 550,
                 special: { type: 'tsunami', windup: 850, cooldown: [11000, 17000],
-                           dmg: [10, 18], knock: 520 } },
-    ADAM:     { emoji: '⚔️', windup: 200, dashSpeed: 1250, dashMs: 280, dmg: [6, 11],  knock: 420 },
+                           dmg: [10, 18], knock: 520 },
+                ultimate: { type: 'lightning', windup: 950, cooldown: [18000, 26000], dmg: [11, 18], knock: 420 } },
+    ADAM:     { emoji: '⚔️', windup: 200, dashSpeed: 1250, dashMs: 280, dmg: [6, 11],  knock: 420,
+                ultimate: { type: 'time-stop', windup: 800, cooldown: [19000, 27000], dmg: [5, 9], knock: 0 } },
     RMSPROP:  { emoji: '🔨', windup: 700, dashSpeed: 1000, dashMs: 360, dmg: [14, 23], knock: 900,
                 special: { type: 'trees', windup: 700, cooldown: [9000, 14000],
-                           dmg: [12, 20], knock: 480 } },
+                           dmg: [12, 20], knock: 480 },
+                ultimate: { type: 'earthquake', windup: 1100, cooldown: [20000, 28000], dmg: [13, 21], knock: 680 } },
     MOMENTUM: { emoji: '🔱', windup: 380, dashSpeed: 1550, dashMs: 460, dmg: [9, 16],  knock: 750,
                 special: { type: 'snowball', windup: 520, cooldown: [6500, 10000],
-                           speed: 880, dmg: [8, 14], knock: 540 } },
+                           speed: 880, dmg: [8, 14], knock: 540 },
+                ultimate: { type: 'tornado', windup: 900, cooldown: [18000, 25000], dmg: [10, 17], knock: 560 } },
     ADAGRAD:  { emoji: '🏹', windup: 520, ranged: true, range: 430, tooClose: 220,
                 arrowSpeed: 950, dmgStart: 16, dmgDecay: 1.5, dmgMin: 4, knock: 450,
                 special: { type: 'fireball', windup: 650, cooldown: [5200, 8200],
-                           speed: 760, dmg: [15, 24], knock: 620 } },
+                           speed: 760, dmg: [15, 24], knock: 620 },
+                ultimate: { type: 'meteor', windup: 1000, cooldown: [19000, 27000], dmg: [14, 22], knock: 620 } },
     // no weapon — oLSTM IS the weapon. Bites the healthy (10-18 dmg), swallows
     // anyone under 50% hp whole, heals and GROWS with every meal.
     oLSTM:    { emoji: '🧠', eats: true, windup: 450, dashSpeed: 850, dashMs: 550,
                 dmg: [10, 18], knock: 600,
                 special: { type: 'geyser', windup: 1100, cooldown: [14000, 21000],
-                           dmg: [14, 23], knock: 360 } },
+                           dmg: [14, 23], knock: 360 },
+                ultimate: { type: 'black-hole', windup: 1300, cooldown: [22000, 30000], dmg: [16, 25], knock: 720 } },
   }
 
   const EAT_LINES = [
@@ -501,6 +641,22 @@
     'The leaderboard is MINE.',
     'Benchmark saturated.',
   ]
+  const CHAT_LINES = [
+    (self, target) => `${target}, come fight me!`,
+    (self, target) => `Your fort cannot save you, ${target}!`,
+    (self, target) => `${target}! I am coming for your gradients!`,
+    (self) => `${self} is taking this round!`,
+    (self, target) => `Hey ${target} — skill issue!`,
+    (self) => `Witness the power of ${self}!`,
+  ]
+  const ULTIMATE_LINES = {
+    lightning: 'CHAIN LIGHTNING!',
+    'time-stop': 'TIME BELONGS TO ADAM!',
+    earthquake: 'SHAKE THE LOSS LANDSCAPE!',
+    tornado: 'MAXIMUM MOMENTUM!',
+    meteor: 'METEOR SCHEDULE ACTIVATED!',
+    'black-hole': 'ALL OPTIMIZERS RETURN TO ME!',
+  }
 
   class Fighter {
     constructor(spec, slot) {
@@ -522,6 +678,7 @@
       this.bubbleEl = this.el.querySelector('.bubble')
       document.body.appendChild(this.el)
       this.bubbleTimer = null
+      this.yellTimer = null
       this.reset(slot)
     }
 
@@ -538,12 +695,18 @@
       this.shots = 0
       this.wallsBuilt = 0
       this.buildReadyAt = performance.now() + rand(1800, 4200)
+      this.talkReadyAt = performance.now() + rand(3500, 9000)
+      this.frozenUntil = 0
       this.behaviorReadyAt = this.behavior === 'flee'
         ? 0
         : performance.now() + rand(2600, 5200)
       const special = this.weapon.special
       this.specialReadyAt = special
         ? performance.now() + rand(special.cooldown[0] * 0.45, special.cooldown[1] * 0.65)
+        : Infinity
+      const ultimate = this.weapon.ultimate
+      this.ultimateReadyAt = ultimate
+        ? performance.now() + rand(ultimate.cooldown[0] * 0.42, ultimate.cooldown[1] * 0.58)
         : Infinity
       // slot-based spawn: spread across the width so fighters never stack
       const lane = Math.max(1, (W() - this.size) / slots)
@@ -600,9 +763,17 @@
 
     say(text, ms = 2600) {
       this.bubbleEl.textContent = text
+      this.bubbleEl.classList.remove('yell')
+      clearTimeout(this.yellTimer)
       this.bubbleEl.classList.add('show')
       clearTimeout(this.bubbleTimer)
       this.bubbleTimer = setTimeout(() => this.bubbleEl.classList.remove('show'), ms)
+    }
+
+    yell(text, ms = 2600) {
+      this.say(text, ms)
+      this.bubbleEl.classList.add('yell')
+      this.yellTimer = setTimeout(() => this.bubbleEl.classList.remove('yell'), ms)
     }
 
     lookAt(other) {
@@ -936,6 +1107,118 @@
     }
   }
 
+  function screenPowerEffect(type, symbol) {
+    const el = document.createElement('div')
+    el.className = 'ultimate-effect ' + type
+    el.textContent = symbol
+    document.body.appendChild(el)
+    setTimeout(() => el.remove(), 1900)
+  }
+
+  function powerBurst(victim, symbol) {
+    const el = document.createElement('div')
+    el.className = 'power-burst'
+    el.textContent = symbol
+    el.style.left = victim.cx() + 'px'
+    el.style.top = victim.cy() + 'px'
+    document.body.appendChild(el)
+    setTimeout(() => el.remove(), 950)
+  }
+
+  function useUltimate(shooter) {
+    const ultimate = shooter.weapon.ultimate
+    const victims = livingEnemies(shooter)
+    shooter.yell(ULTIMATE_LINES[ultimate.type], 2600)
+
+    switch (ultimate.type) {
+      case 'lightning':
+        screenPowerEffect('lightning', '⚡')
+        victims.forEach((victim, i) => setTimeout(() => {
+          if (!victim.alive) return
+          powerBurst(victim, '⚡')
+          hit(shooter, victim, {
+            dmg: rand(ultimate.dmg[0], ultimate.dmg[1]),
+            knock: ultimate.knock,
+            dir: { x: rand(-0.35, 0.35), y: -1 },
+            sparkClass: 'electric',
+          })
+        }, 180 + i * 100))
+        break
+
+      case 'time-stop':
+        screenPowerEffect('time-stop', '⏱️')
+        for (const victim of victims) {
+          victim.frozenUntil = performance.now() + 2100
+          victim.vx = 0
+          victim.vy = 0
+          powerBurst(victim, '❄️')
+          hit(shooter, victim, { dmg: rand(ultimate.dmg[0], ultimate.dmg[1]), knock: 0 })
+        }
+        break
+
+      case 'earthquake':
+        screenPowerEffect('earthquake', '🌋')
+        for (const wall of [...walls]) damageWall(wall, 2)
+        victims.forEach((victim, i) => setTimeout(() => {
+          if (!victim.alive) return
+          powerBurst(victim, '💥')
+          hit(shooter, victim, {
+            dmg: rand(ultimate.dmg[0], ultimate.dmg[1]),
+            knock: ultimate.knock,
+            dir: { x: rand(-0.45, 0.45), y: -1 },
+          })
+        }, 220 + i * 65))
+        break
+
+      case 'tornado':
+        screenPowerEffect('tornado', '🌪️')
+        victims.forEach((victim, i) => setTimeout(() => {
+          if (!victim.alive) return
+          const radial = dirBetween(shooter.cx(), shooter.cy(), victim.cx(), victim.cy())
+          powerBurst(victim, '💨')
+          hit(shooter, victim, {
+            dmg: rand(ultimate.dmg[0], ultimate.dmg[1]),
+            knock: ultimate.knock,
+            dir: { x: -radial.y, y: radial.x - 0.4 },
+          })
+        }, 160 + i * 80))
+        break
+
+      case 'meteor':
+        screenPowerEffect('meteor', '☄️')
+        victims.forEach((victim, i) => setTimeout(() => {
+          if (!victim.alive) return
+          powerBurst(victim, '☄️')
+          hit(shooter, victim, {
+            dmg: rand(ultimate.dmg[0], ultimate.dmg[1]),
+            knock: ultimate.knock,
+            dir: { x: rand(-0.25, 0.25), y: 1 },
+            fire: true,
+          })
+        }, 260 + i * 145))
+        break
+
+      case 'black-hole':
+        screenPowerEffect('black-hole', '🕳️')
+        victims.forEach((victim, i) => setTimeout(() => {
+          if (!victim.alive) return
+          const pull = dirBetween(victim.cx(), victim.cy(), shooter.cx(), shooter.cy())
+          powerBurst(victim, '🌌')
+          hit(shooter, victim, {
+            dmg: rand(ultimate.dmg[0], ultimate.dmg[1]),
+            knock: ultimate.knock,
+            dir: pull,
+            sparkClass: 'cosmic',
+          })
+        }, 180 + i * 95))
+        break
+    }
+  }
+
+  function clearPowerEffects() {
+    document.querySelectorAll('.ultimate-effect, .power-burst').forEach((el) => el.remove())
+  }
+
   function clearProjectiles() {
     for (const p of projectiles) p.el.remove()
     projectiles.length = 0
@@ -1085,6 +1368,7 @@
     round++
     clearProjectiles()
     clearWalls()
+    clearPowerEffects()
     for (const f of fighters) f.reset(f.slot)
     showBanner(`ROUND ${round}<div class="sub">FIGHT</div>`, 2600)
     roundOver = false
@@ -1095,6 +1379,7 @@
   function tick(now) {
     const dt = Math.min(0.05, (now - last) / 1000)
     last = now
+    updateSky(now)
 
     for (const f of fighters) {
       if (!f.alive) {
@@ -1109,6 +1394,12 @@
         continue
       }
 
+      if (now < f.frozenUntil) {
+        f.setPose(null)
+        f.place()
+        continue
+      }
+
       const enemies = livingEnemies(f)
       const nearest = enemies.length
         ? enemies.reduce((a, b) =>
@@ -1117,13 +1408,24 @@
         : null
       f.lookAt(nearest)
       f.setFacing(f.target && f.target.alive ? f.target : nearest)
+      if (!roundOver && nearest && now >= f.talkReadyAt) {
+        const line = CHAT_LINES[Math.floor(Math.random() * CHAT_LINES.length)]
+        f.yell(line(f.name, nearest.name), 2300)
+        f.talkReadyAt = now + rand(9000, 16000)
+      }
 
       switch (f.state) {
         case 'idle': {
           if (!roundOver && nearest && now >= f.stateUntil) {
             const boss = fighters.find((fighter) => fighter.name === 'oLSTM' && fighter.alive)
             f.target = enemies[Math.floor(Math.random() * enemies.length)]
-            if (now >= f.buildReadyAt) {
+            if (f.weapon.ultimate && now >= f.ultimateReadyAt) {
+              f.state = 'ultimate-windup'
+              f.stateUntil = now + f.weapon.ultimate.windup
+              f.ultimateReadyAt = now + rand(f.weapon.ultimate.cooldown[0], f.weapon.ultimate.cooldown[1])
+              f.setPose('windup')
+              f.yell('ULTIMATE ONLINE!', 1600)
+            } else if (now >= f.buildReadyAt) {
               f.target = f !== boss && boss ? boss : nearest
               f.state = 'build-windup'
               f.stateUntil = now + rand(320, 520)
@@ -1153,6 +1455,16 @@
               f.setPose('walking')
             }
             f.setMood(f.state === 'flee' ? 'worried' : 'excited')
+          }
+          break
+        }
+        case 'ultimate-windup': {
+          if (now >= f.stateUntil) {
+            useUltimate(f)
+            f.state = 'recover'
+            f.stateUntil = now + rand(1000, 1500)
+            f.setPose('idle')
+            f.setMood('neutral')
           }
           break
         }
@@ -1372,16 +1684,37 @@
     requestAnimationFrame(tick)
   }
 
-  // ---------- echo mode: the room speaks, a Maxy repeats it ----------
-  // Text arrives from the on-device transcriber via the main process. A random
-  // living fighter says it in its bubble, then it is gone — nothing is stored.
+  function roomResponse(fighter, text) {
+    const heard = String(text).trim().slice(0, 240)
+    const lower = heard.toLowerCase()
+    if (/\b(hello|hi|hey)\b/.test(lower)) return `HELLO, HUMAN! ${fighter.name} HEARS YOU!`
+    if (/who.*(win|winning)|who.*strong/.test(lower)) return `${fighter.name} IS OBVIOUSLY WINNING!`
+    if (/\b(wall|build|fort|maze)\b/.test(lower)) return 'FORTIFICATIONS GOING UP!'
+    if (/\b(fire|power|ultimate|attack)\b/.test(lower)) return 'SUPER POWER CHARGED! STAND BACK!'
+    if (/\b(stop|peace|calm)\b/.test(lower)) return 'NO PEACE UNTIL THE LOSS CONVERGES!'
+    if (/\b(night|moon|sun|day)\b/.test(lower)) return document.body.classList.contains('night')
+      ? 'THE MOON BUFFS MY POLICY!'
+      : 'SOLAR-POWERED GRADIENTS ONLINE!'
+    if (lower.includes(fighter.name.toLowerCase())) return `YOU CALLED ${fighter.name}? I ANSWER!`
+    const replies = [
+      `I HEARD “${heard}” — CHALLENGE ACCEPTED!`,
+      `${fighter.name} ACKNOWLEDGES THE HUMAN!`,
+      'GOOD IDEA. I WILL USE IT AGAINST EVERYONE!',
+      'THE ROOM HAS SPOKEN. BACK TO BATTLE!',
+    ]
+    return replies[Math.floor(Math.random() * replies.length)]
+  }
+
+  // ---------- echo mode: the room speaks, a Maxy answers ----------
+  // Speech is transcribed on-device, relayed once, and never stored.
   if (window.maxyBridge && window.maxyBridge.onEcho) {
     window.maxyBridge.onEcho((text) => {
       const living = fighters.filter((f) => f.alive)
       const pool = living.length ? living : fighters
       const fighter = pool[Math.floor(Math.random() * pool.length)]
-      fighter.say('“' + text + '”', 4600)
+      fighter.yell(roomResponse(fighter, text), 4600)
       fighter.floatText('🗣')
+      fighter.talkReadyAt = performance.now() + 8000
     })
   }
 
