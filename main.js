@@ -1,11 +1,18 @@
 const path = require('path')
 const http = require('http')
-const { app, BrowserWindow, Tray, Menu, screen, ipcMain, nativeImage } = require('electron')
+const { app, BrowserWindow, Tray, Menu, screen, ipcMain, nativeImage, systemPreferences } = require('electron')
 
 let win = null
 let tray = null
 let paused = false
 let echoServer = null
+
+// Vision: a hidden window runs the camera + face detector and reports
+// viewership stats. Off unless MAXY_VISION=1 (camera access is opt-in). Only
+// small numbers cross the IPC boundary — no frames ever leave that window.
+let visionWin = null
+let visionEnabled = process.env.MAXY_VISION === '1'
+let lastVisionStats = { occupancy: 0, attentive: 0, ratio: 0, ok: false }
 
 // Echo mode: a local-only HTTP receiver. The on-device transcriber POSTs
 // recognized speech here and we hand it to the renderer, where a Maxy speaks
@@ -32,6 +39,77 @@ function startEchoServer() {
   echoServer.on('error', (error) => console.log('echo server error:', error.message))
   echoServer.listen(port, '127.0.0.1', () => console.log('echo listening on 127.0.0.1:' + port))
 }
+
+// ---------------------------------------------------------------------------
+// Vision window
+// ---------------------------------------------------------------------------
+function visionQuery() {
+  // Forward tuning knobs to the renderer as a query string. Unset ones fall
+  // back to the defaults baked into vision.html.
+  const map = {
+    minConfidence: process.env.MAXY_VISION_MIN_CONFIDENCE,
+    attention: process.env.MAXY_VISION_ATTENTION,
+    smoothing: process.env.MAXY_VISION_SMOOTHING,
+    reportEveryMs: process.env.MAXY_VISION_REPORT_MS,
+  }
+  const parts = Object.entries(map)
+    .filter(([, v]) => v != null && v !== '')
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+  return parts.length ? '?' + parts.join('&') : ''
+}
+
+function createVisionWindow() {
+  const debug = process.env.MAXY_VISION_DEBUG === '1'
+  visionWin = new BrowserWindow({
+    width: 480,
+    height: 360,
+    show: debug,
+    // A tiny always-available window; only shown in debug for tuning.
+    skipTaskbar: !debug,
+    title: 'Maxy Vision',
+    webPreferences: {
+      preload: path.join(__dirname, 'vision-preload.js'),
+      contextIsolation: true,
+    },
+  })
+  visionWin.loadFile('vision.html', { search: visionQuery() })
+  visionWin.on('closed', () => {
+    visionWin = null
+  })
+}
+
+function stopVisionWindow() {
+  if (visionWin && !visionWin.isDestroyed()) visionWin.close()
+  visionWin = null
+  lastVisionStats = { occupancy: 0, attentive: 0, ratio: 0, ok: false }
+  sendStats({ ...lastVisionStats, enabled: false })
+}
+
+async function setVisionEnabled(on) {
+  visionEnabled = on
+  if (!on) {
+    stopVisionWindow()
+    return
+  }
+  // On macOS, proactively prompt for camera access so the failure mode is a
+  // system dialog rather than a silent getUserMedia rejection.
+  if (process.platform === 'darwin' && systemPreferences.askForMediaAccess) {
+    try {
+      await systemPreferences.askForMediaAccess('camera')
+    } catch {
+      /* the renderer will still surface a clear error if this was denied */
+    }
+  }
+  if (!visionWin) createVisionWindow()
+}
+
+ipcMain.on('vision-stats', (_event, stats) => {
+  lastVisionStats = stats
+  if (process.env.MAXY_VISION_DEBUG === '1') console.log('[vision] stats', JSON.stringify(stats))
+  sendStats({ ...stats, enabled: true })
+})
+
+ipcMain.on('vision-log', (_event, msg) => console.log('[vision]', msg))
 
 function pickDisplay() {
   const pick = (process.env.MAXY_DISPLAY || 'primary').toLowerCase()
@@ -89,6 +167,10 @@ function send(cmd) {
   if (win && !win.isDestroyed()) win.webContents.send('command', cmd)
 }
 
+function sendStats(stats) {
+  if (win && !win.isDestroyed()) win.webContents.send('viewership', stats)
+}
+
 function createTray() {
   tray = new Tray(nativeImage.createEmpty())
   tray.setTitle('❊ maxy')
@@ -102,6 +184,13 @@ function createTray() {
         { label: 'Inferno geyser', click: () => send('inferno') },
         { label: 'Show policy', click: () => send('policy') },
         { label: 'Go incognito', click: () => send('incognito') },
+        { type: 'separator' },
+        {
+          label: visionEnabled ? 'Stop watching room' : 'Watch room (camera)',
+          click: () => {
+            setVisionEnabled(!visionEnabled).finally(rebuild)
+          },
+        },
         { type: 'separator' },
         {
           label: paused ? 'Resume Maxy' : 'Pause Maxy',
@@ -124,6 +213,7 @@ app.whenReady().then(() => {
   createWindow()
   createTray()
   startEchoServer()
+  if (visionEnabled) setVisionEnabled(true)
 })
 
 app.on('window-all-closed', () => app.quit())

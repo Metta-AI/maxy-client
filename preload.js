@@ -4,5 +4,6 @@ contextBridge.exposeInMainWorld('maxyBridge', {
   onCursor: (fn) => ipcRenderer.on('cursor', (_e, p) => fn(p)),
   onCommand: (fn) => ipcRenderer.on('command', (_e, c) => fn(c)),
   onEcho: (fn) => ipcRenderer.on('echo', (_e, text) => fn(text)),
+  onViewership: (fn) => ipcRenderer.on('viewership', (_e, stats) => fn(stats)),
   setInteractive: (v) => ipcRenderer.send('interactive', v),
 })

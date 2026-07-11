@@ -53,8 +53,51 @@ The main-room setup can also run fully local speech interaction. Start each clie
 - **Cursor feed** — main process polls the global cursor position at 20 Hz and sends it to the renderer so pupils can track (the overlay itself can't see the mouse because it's click-through)
 - **Speech bubbles** — Ink & Print styled, 18-quip bag shuffled for variety, auto-hide after a few seconds
 - **Tray integration** — macOS menu-bar icon with manual command triggers
+- **Viewership vision** (opt-in) — a hidden window runs the camera through an on-device face detector and reports a live "who's watching" number to the overlay (see below)
 
-No backend, no network, no persistence — all state lives in the renderer process.
+No backend and no external network. State lives in the renderer; nothing is persisted. The optional vision feature uses the local camera but keeps every frame inside its own window — only small integers ever cross to the rest of the app.
+
+## Viewership (camera CV pipeline)
+
+Maxy can measure how much of the room is actually watching the screen and show it top-right as `WATCHING · 75% · 3/4 eyes`. It is **off by default** and only turns on when you ask for it, because it uses the camera.
+
+Turn it on with the tray command **_Watch room (camera)_**, or start Maxy with it already enabled:
+
+```bash
+MAXY_VISION=1 npm start
+```
+
+### The metric
+
+- **occupancy** — number of faces the detector sees in the frame (people in the room)
+- **attentive** — faces that appear to be facing the screen ("eyes on it")
+- **viewership** — `attentive / occupancy`, shown as a percentage alongside the raw `attentive/occupancy` fraction so the number always carries its context
+
+> **Attention is a proxy, not true gaze.** v1 estimates *frontalness* — whether a head is turned toward the camera — from the detector's 6 face keypoints (eyes, nose, ears): a centered nose and symmetric ears score high, a turned head scores low. It does **not** track irises, so someone facing the screen with their eyes elsewhere still counts as attentive. It is a good, cheap signal for "the room is oriented at the screen," and the frontalness threshold is tunable (below). Iris-based gaze is the natural next step.
+
+### How it works
+
+- **`vision.html` + `vision-preload.js`** — a hidden `BrowserWindow` opens the camera via `getUserMedia` and runs Google **MediaPipe Tasks Vision** `FaceDetector` (BlazeFace short-range) on each video frame. It computes occupancy + attentive, exponentially smooths the ratio, and sends the small stats object to the main process. Frames never leave this window.
+- **`main.js`** — spawns/tears down the vision window, prompts for macOS camera access, and relays the stats to the overlay over IPC.
+- **`hud.js`** — a shared, Ink & Print–styled readout injected into both `index.html` and `battle.html`, pinned top-right. Hidden entirely while vision is off.
+- **`vendor/mediapipe/`** — the MediaPipe WASM runtime and the ~230 KB BlazeFace model are vendored into the repo so the pipeline runs fully offline; no CDN, no download at runtime.
+
+### Tuning
+
+All optional; sensible defaults are baked in. Set before launch:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAXY_VISION` | off | `1` to start with the camera on |
+| `MAXY_VISION_DEBUG` | off | `1` shows the camera window with face boxes (green = attentive, orange = not) for tuning |
+| `MAXY_VISION_ATTENTION` | `0.62` | frontalness threshold, 0–1, above which a face counts as attentive |
+| `MAXY_VISION_MIN_CONFIDENCE` | `0.5` | detector confidence for a face to count toward occupancy |
+| `MAXY_VISION_SMOOTHING` | `0.18` | EMA factor on the reported ratio (lower = steadier, higher = snappier) |
+| `MAXY_VISION_REPORT_MS` | `400` | how often stats are pushed to the HUD |
+
+### Extending
+
+The stats object (`{ occupancy, attentive, ratio, ok }`) is intentionally shaped to feed a per-battle ranking later: in battle mode, partition attention by which fighter/region of the screen each frontal face is oriented toward, and rank battles by their share of the room's eyes.
 
 ## Extending
 
