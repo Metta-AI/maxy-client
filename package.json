@@ -8,6 +8,7 @@
     "bg": "nohup electron . > /tmp/maxy.log 2>&1 &"
   },
   "devDependencies": {
+    "@mediapipe/tasks-vision": "^0.10.35",
     "electron": "^37.0.0"
   }
 }

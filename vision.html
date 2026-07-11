@@ -1,0 +1,218 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Maxy Vision</title>
+<style>
+  /* This window is normally hidden. When MAXY_VISION_DEBUG=1 it is shown so a
+     human can see the camera feed with face boxes overlaid — useful for tuning
+     the attention proxy. Styling mirrors the Ink & Print palette. */
+  html, body {
+    margin: 0; height: 100%; background: #14110c; color: #f3ead6;
+    font: 13px ui-monospace, 'SF Mono', monospace; overflow: hidden;
+  }
+  #wrap { position: relative; width: 100vw; height: 100vh; }
+  #cam { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  #draw { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); }
+  #status {
+    position: absolute; left: 10px; top: 10px; z-index: 3;
+    background: rgba(20,17,12,0.72); padding: 6px 10px; border-radius: 8px;
+    white-space: pre; line-height: 1.5; max-width: 60vw;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <video id="cam" autoplay playsinline muted></video>
+  <canvas id="draw"></canvas>
+  <div id="status">starting…</div>
+</div>
+
+<script type="module">
+import {
+  FilesetResolver,
+  FaceDetector,
+} from './vendor/mediapipe/vision_bundle.mjs'
+
+const bridge = window.visionBridge || { sendStats: () => {}, log: (m) => console.log(m) }
+const video = document.getElementById('cam')
+const canvas = document.getElementById('draw')
+const ctx = canvas.getContext('2d')
+const statusEl = document.getElementById('status')
+
+// ---- tunables (overridable from the main process via query string) ----
+const params = new URLSearchParams(location.search)
+const num = (k, d) => (params.has(k) ? Number(params.get(k)) : d)
+const CONFIG = {
+  // Minimum detector confidence for a box to count as a person in the room.
+  minConfidence: num('minConfidence', 0.5),
+  // A face counts as "attentive" (an eye on the screen) when its frontal score
+  // clears this. Frontal score is a head-pose proxy, documented below.
+  attentionThreshold: num('attention', 0.62),
+  // Exponential smoothing on the reported ratio so the HUD does not flicker.
+  smoothing: num('smoothing', 0.18),
+  // How often we report up to the overlay (ms). Detection runs per animation
+  // frame; reporting is throttled to keep IPC quiet.
+  reportEveryMs: num('reportEveryMs', 400),
+}
+
+function setStatus(text) {
+  statusEl.textContent = text
+}
+
+// ---------------------------------------------------------------------------
+// Attention proxy
+//
+// True gaze estimation needs iris landmarks; v1 uses a head-pose proxy built
+// from the 6 BlazeFace keypoints (right eye, left eye, nose tip, mouth, right
+// ear, left ear, all normalized to the frame). The intuition: when a head
+// faces the camera the nose sits centered between the eyes and the two ears
+// are roughly equidistant from it. As the head turns away, the nose slides
+// toward the near eye and the far ear recedes. We fold both cues into a single
+// 0..1 "frontalness" score. This is deliberately a proxy — see README.
+// ---------------------------------------------------------------------------
+function frontalScore(kp) {
+  // kp indices for blaze_face_short_range: 0 R-eye, 1 L-eye, 2 nose, 3 mouth,
+  // 4 R-ear, 5 L-ear. Coordinates are normalized [0,1] in image space.
+  if (!kp || kp.length < 6) return 0
+  const rEye = kp[0], lEye = kp[1], nose = kp[2], rEar = kp[4], lEar = kp[5]
+
+  const eyeDx = lEye.x - rEye.x
+  const eyeDy = lEye.y - rEye.y
+  const eyeSep = Math.hypot(eyeDx, eyeDy)
+  if (eyeSep < 1e-4) return 0
+
+  // 1) Nose horizontal offset from the eye midpoint, in units of eye
+  //    separation. 0 = perfectly centered; grows as the head yaws.
+  const eyeMidX = (rEye.x + lEye.x) / 2
+  const noseOffset = Math.abs(nose.x - eyeMidX) / eyeSep
+  const noseCue = clamp01(1 - noseOffset / 0.5) // offset >= half an eye-sep -> 0
+
+  // 2) Ear symmetry: ratio of the nearer ear distance to the farther. 1 when
+  //    facing forward, -> 0 as one ear disappears behind a turned head.
+  const dR = Math.hypot(nose.x - rEar.x, nose.y - rEar.y)
+  const dL = Math.hypot(nose.x - lEar.x, nose.y - lEar.y)
+  const earCue = Math.min(dR, dL) / Math.max(dR, dL || 1e-4)
+
+  // Weighted blend; the nose cue is the stronger signal for yaw.
+  return clamp01(0.65 * noseCue + 0.35 * earCue)
+}
+
+function clamp01(v) {
+  return v < 0 ? 0 : v > 1 ? 1 : v
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline
+// ---------------------------------------------------------------------------
+let detector = null
+let smoothedRatio = 0
+let lastReport = 0
+let running = false
+
+async function initDetector() {
+  setStatus('loading model…')
+  const fileset = await FilesetResolver.forVisionTasks('./vendor/mediapipe/wasm')
+  detector = await FaceDetector.createFromOptions(fileset, {
+    baseOptions: {
+      modelAssetPath: './vendor/mediapipe/models/blaze_face_short_range.tflite',
+      delegate: 'GPU',
+    },
+    runningMode: 'VIDEO',
+    minDetectionConfidence: CONFIG.minConfidence,
+  })
+  bridge.log('face detector ready')
+}
+
+async function initCamera() {
+  setStatus('requesting camera…')
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+    audio: false,
+  })
+  video.srcObject = stream
+  await video.play()
+  // Wait for real dimensions before sizing the debug canvas.
+  while (!video.videoWidth) await new Promise((r) => setTimeout(r, 30))
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  bridge.log(`camera ${video.videoWidth}x${video.videoHeight}`)
+}
+
+function drawDebug(detections) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  for (const det of detections) {
+    const box = det.boundingBox
+    const score = frontalScore(det.keypoints)
+    const attentive = score >= CONFIG.attentionThreshold
+    ctx.lineWidth = 3
+    ctx.strokeStyle = attentive ? '#8fae6a' : '#b36e4e'
+    ctx.strokeRect(box.originX, box.originY, box.width, box.height)
+    ctx.fillStyle = ctx.strokeStyle
+    ctx.font = '16px ui-monospace, monospace'
+    ctx.save()
+    // Text would be mirrored by the canvas flip; unflip just for the label.
+    ctx.translate(box.originX + box.width, box.originY - 6)
+    ctx.scale(-1, 1)
+    ctx.fillText(`${(score * 100) | 0}%`, 0, 0)
+    ctx.restore()
+  }
+}
+
+let lastVideoTime = -1
+
+function loop() {
+  if (!running) return
+  requestAnimationFrame(loop)
+  if (!detector || video.readyState < 2) return
+  if (video.currentTime === lastVideoTime) return
+  lastVideoTime = video.currentTime
+
+  const now = performance.now()
+  const result = detector.detectForVideo(video, now)
+  const detections = result.detections || []
+
+  const occupancy = detections.length
+  let attentive = 0
+  for (const det of detections) {
+    if (frontalScore(det.keypoints) >= CONFIG.attentionThreshold) attentive++
+  }
+  const rawRatio = occupancy > 0 ? attentive / occupancy : 0
+  smoothedRatio = smoothedRatio + CONFIG.smoothing * (rawRatio - smoothedRatio)
+
+  drawDebug(detections)
+  setStatus(
+    `occupancy ${occupancy}\nattentive ${attentive}\nratio ${(smoothedRatio * 100).toFixed(0)}%`
+  )
+
+  if (now - lastReport >= CONFIG.reportEveryMs) {
+    lastReport = now
+    bridge.sendStats({
+      occupancy,
+      attentive,
+      ratio: smoothedRatio,
+      ok: true,
+    })
+  }
+}
+
+async function start() {
+  try {
+    await initDetector()
+    await initCamera()
+    running = true
+    lastReport = 0
+    loop()
+  } catch (err) {
+    const msg = (err && err.message) || String(err)
+    setStatus('vision error:\n' + msg)
+    bridge.log('vision error: ' + msg)
+    // Tell the overlay we are unavailable so the HUD can show a quiet state.
+    bridge.sendStats({ occupancy: 0, attentive: 0, ratio: 0, ok: false, error: msg })
+  }
+}
+
+start()
+</script>
+</body>
+</html>
