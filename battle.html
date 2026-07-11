@@ -19,13 +19,18 @@
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
-    background: linear-gradient(180deg, rgba(120, 205, 255, 0.2), rgba(255, 226, 150, 0.08));
-    transition: background 3s ease;
+    background: linear-gradient(180deg, rgba(76, 190, 255, 0.5), rgba(255, 221, 112, 0.2));
+    transition: background 1.8s ease;
   }
   body.night #sky {
-    background: linear-gradient(180deg, rgba(2, 8, 35, 0.7), rgba(18, 31, 73, 0.38));
+    background: linear-gradient(180deg, rgba(1, 5, 25, 0.88), rgba(8, 16, 48, 0.72));
   }
-  #stars { position: absolute; inset: 0; opacity: 0; transition: opacity 3s ease; }
+  body.deep-night #sky {
+    background:
+      radial-gradient(circle at 50% 10%, rgba(53, 73, 126, 0.34), transparent 32%),
+      linear-gradient(180deg, rgba(0, 1, 12, 0.98), rgba(3, 7, 29, 0.94));
+  }
+  #stars { position: absolute; inset: 0; opacity: 0; transition: opacity 1.8s ease; }
   body.night #stars { opacity: 1; }
   .star {
     position: absolute;
@@ -48,8 +53,9 @@
     font-size: 64px;
     transition: opacity 2s ease;
   }
-  #sun { filter: drop-shadow(0 0 25px #ffd65a); }
-  #moon { filter: drop-shadow(0 0 20px #b9cbff); }
+  #sun { filter: drop-shadow(0 0 38px #ffbd2f) drop-shadow(0 0 90px #ffef9a); }
+  #moon { filter: drop-shadow(0 0 32px #b9cbff) drop-shadow(0 0 90px #768fda); }
+  body.deep-night #moon { font-size: 78px; }
   #time-label {
     position: absolute;
     top: 18px;
@@ -67,9 +73,17 @@
     width: 160px;
     height: 162px;
     will-change: transform;
-    transition: opacity 180ms ease;
+    transition: opacity 300ms ease, filter 300ms ease;
   }
-  .fighter.cloaked { opacity: 0.06; }
+  .fighter.cloaked { opacity: 0.06 !important; }
+  .fighter.night-hidden {
+    opacity: 0.13;
+    filter: brightness(0.34) saturate(0.45);
+  }
+  .fighter.night-hidden .plate .name::after {
+    content: '  🌑 HIDDEN';
+    color: #aebce7;
+  }
   .fighter .inner {
     width: 100%;
     height: 100%;
@@ -541,9 +555,10 @@
   const timeLabel = document.getElementById('time-label')
   const skyStartedAt = performance.now()
   const DAY_CYCLE_MS = 60000
+  let nightCover = 0
 
   const stars = document.getElementById('stars')
-  for (let i = 0; i < 42; i++) {
+  for (let i = 0; i < 72; i++) {
     const star = document.createElement('span')
     star.className = 'star'
     star.style.left = rand(2, 98) + '%'
@@ -561,14 +576,22 @@
     sun.style.top = H() * 0.46 - sunHeight * orbitY + 'px'
     moon.style.left = W() / 2 - Math.cos(angle) * orbitX + 'px'
     moon.style.top = H() * 0.46 + sunHeight * orbitY + 'px'
-    sun.style.opacity = clamp((sunHeight + 0.16) * 2.4, 0, 1)
-    moon.style.opacity = clamp((-sunHeight + 0.16) * 2.4, 0, 1)
-    document.body.classList.toggle('night', sunHeight < 0.08)
-    timeLabel.textContent = sunHeight > 0.28
-      ? 'DAY'
-      : sunHeight < -0.28
-        ? 'NIGHT'
-        : Math.cos(angle) < 0 ? 'DUSK' : 'DAWN'
+    sun.style.opacity = clamp((sunHeight + 0.08) * 4, 0, 1)
+    moon.style.opacity = clamp((-sunHeight + 0.08) * 4, 0, 1)
+    nightCover = clamp((-sunHeight - 0.04) / 0.72, 0, 1)
+    document.body.style.setProperty('--night-cover', nightCover.toFixed(3))
+    document.body.classList.toggle('night', sunHeight < 0.05)
+    document.body.classList.toggle('deep-night', nightCover > 0.55)
+    document.body.classList.toggle('high-day', sunHeight > 0.55)
+    timeLabel.textContent = sunHeight > 0.55
+      ? 'HIGH NOON'
+      : sunHeight > 0.18
+        ? 'DAY'
+        : nightCover > 0.55
+          ? 'DEEP NIGHT'
+          : sunHeight < -0.12
+            ? 'NIGHT'
+            : Math.cos(angle) < 0 ? 'DUSK' : 'DAWN'
   }
 
   const ROSTER = [
@@ -727,6 +750,7 @@
       this.buildReadyAt = performance.now() + rand(2200, 4800)
       this.talkReadyAt = performance.now() + rand(3500, 9000)
       this.frozenUntil = 0
+      this.revealedUntil = 0
       this.behaviorReadyAt = this.behavior === 'flee'
         ? 0
         : performance.now() + rand(2600, 5200)
@@ -744,6 +768,7 @@
       this.y = rand(TOP_MARGIN, Math.max(TOP_MARGIN + 1, H() - this.size))
       this.el.classList.remove('dead')
       this.el.classList.remove('cloaked')
+      this.el.classList.remove('night-hidden')
       // undo an "eaten" exit
       this.el.style.display = ''
       this.el.style.transition = ''
@@ -846,6 +871,7 @@
       this.alive = false
       this.state = 'dead'
       this.el.classList.add('dead')
+      this.el.classList.remove('night-hidden')
       this.setMood('asleep')
       this.setPose(null)
       this.say(KO_LINES[Math.floor(Math.random() * KO_LINES.length)], 3200)
@@ -1357,8 +1383,20 @@
     }
   }
 
+  const REVEALING_STATES = new Set(['windup', 'dash', 'special-windup', 'ultimate-windup'])
+
+  function isHiddenFromBoss(fighter, boss, now = performance.now()) {
+    if (!fighter.alive || !boss || !boss.alive || fighter === boss || nightCover < 0.45) return false
+    if (now < fighter.revealedUntil || REVEALING_STATES.has(fighter.state)) return false
+    const detectionRange = 590 - nightCover * 330
+    return Math.hypot(fighter.cx() - boss.cx(), fighter.cy() - boss.cy()) > detectionRange
+  }
+
   function livingEnemies(f) {
-    return fighters.filter((o) => o !== f && o.alive)
+    const enemies = fighters.filter((o) => o !== f && o.alive)
+    return f.name === 'oLSTM'
+      ? enemies.filter((fighter) => !isHiddenFromBoss(fighter, f))
+      : enemies
   }
 
   function safestTeleportPosition(fighter, enemies) {
@@ -1385,6 +1423,8 @@
   }
 
   function hit(attacker, victim, opts = {}) {
+    attacker.revealedUntil = performance.now() + 2200
+    attacker.el.classList.remove('night-hidden')
     const w = attacker.weapon
     const crit = Math.random() < 0.15
     let base = opts.dmg !== undefined ? opts.dmg : rand(w.dmg[0], w.dmg[1])
@@ -1487,6 +1527,11 @@
         f.place()
         continue
       }
+
+      const nightBoss = fighters.find((fighter) => fighter.name === 'oLSTM' && fighter.alive)
+      f.el.classList.toggle('night-hidden', Boolean(
+        nightBoss && f !== nightBoss && isHiddenFromBoss(f, nightBoss, now),
+      ))
 
       if (now < f.frozenUntil) {
         f.setPose(null)
@@ -1646,7 +1691,14 @@
         }
         case 'chase': {
           const t = f.target
-          if (!t || !t.alive) { f.state = 'idle'; f.setPose('idle'); break }
+          const lostInDark = f.name === 'oLSTM' && t && isHiddenFromBoss(t, f, now)
+          if (!t || !t.alive || lostInDark) {
+            f.target = null
+            f.state = 'idle'
+            f.setPose('idle')
+            if (lostInDark) f.floatText('LOST IN DARK')
+            break
+          }
           const dir = dirBetween(f.cx(), f.cy(), t.cx(), t.cy())
           const attackRange = f.weapon.ranged ? f.weapon.range : (f.size + t.size) * 0.48
           const accel = 1400 * (160 / f.size) // the big one lumbers
@@ -1753,8 +1805,9 @@
       const boss = fighters.find((fighter) => fighter.name === 'oLSTM' && fighter.alive)
       if (boss && f !== boss) {
         const awayFromBoss = dirBetween(boss.cx(), boss.cy(), f.cx(), f.cy())
-        if (awayFromBoss.d < 520) {
-          const pressure = (1 - awayFromBoss.d / 520) * 1050
+        const keepAwayRange = 520 + nightCover * 260
+        if (awayFromBoss.d < keepAwayRange) {
+          const pressure = (1 - awayFromBoss.d / keepAwayRange) * (1050 + nightCover * 520)
           f.vx += awayFromBoss.x * pressure * dt
           f.vy += awayFromBoss.y * pressure * dt
         }
