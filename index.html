@@ -313,7 +313,14 @@
     phase: 0,
     agitation: 0,        // eases toward agitationTarget; drives wiggle amplitude + speed
     agitationTarget: 0.15,
+    mood: 0,             // eases toward moodTarget; -1 frown … +1 smile, bends the bands
+    moodTarget: 0.25,
     roleOffset: 0,       // rotates which outcome each band represents
+  }
+
+  function setMood(v, holdMs) {
+    state.moodTarget = clamp(v, -1, 1)
+    if (holdMs) setTimeout(() => (state.moodTarget = 0.25), holdMs)
   }
   const ROLES = ['you', 'me', 'environment']
 
@@ -326,15 +333,18 @@
 
   // ---------- the living geometry ----------
   // Two boundary curves split the leaf into three bands. Their rest heights
-  // come from the current distribution; their shape is a drifting wave.
-  function boundaryPts(yc, phase, amp) {
+  // come from the current distribution; their shape is a drifting wave plus a
+  // mood bend — a parabola that bows the curve into a smile or a frown.
+  function boundaryPts(yc, phase, amp, bend = 0) {
     const pts = []
     const N = 22
     for (let i = 0; i <= N; i++) {
       const x = (i / N) * VB
       const t = x / VB
+      const arch = 1 - Math.pow(2 * t - 1, 2)              // 0 at edges, 1 at center
       const y = yc
         - 90 * (t - 0.5)                                   // waves climb to the right, like the mark
+        + bend * arch                                      // mood curvature
         + amp * Math.sin(t * Math.PI * 2 * 1.4 + phase)
         + amp * 0.4 * Math.sin(t * Math.PI * 2 * 3.3 + phase * 1.6)
       pts.push([x, y])
@@ -360,25 +370,34 @@
     const dt = Math.min(0.05, (now - lastFrame) / 1000)
     lastFrame = now
 
-    // ease distribution + agitation toward their targets
+    // ease distribution + agitation + mood toward their targets
     const target = softmax(state.logits)
     for (let i = 0; i < 3; i++) state.p[i] = lerp(state.p[i], target[i], dt * 1.6)
     state.agitation = lerp(state.agitation, state.agitationTarget, dt * 2.5)
+    state.mood = lerp(state.mood, state.moodTarget, dt * 2.0)
     state.phase += dt * (0.9 + state.agitation * 5)
 
-    const amp = 22 + state.agitation * 46
+    // A strong mood calms the waves so the expression dominates the silhouette
+    const calm = 1 - 0.6 * Math.abs(state.mood)
+    const amp = (22 + state.agitation * 46) * calm
     const midAmp = amp * 1.25   // the central boundary region is the most alive
     const b1 = VBH * state.p[0]
     const b2 = VBH * (state.p[0] + state.p[1])
-    const top = boundaryPts(b1, state.phase, amp)
-    const bot = boundaryPts(b2, state.phase + 1.9, midAmp)
+    // Mood restructures the whole stack. Smiling: the upper boundary arches up
+    // (raised cheeks) and the lower boundary bows down — the middle band grins.
+    // Frowning: both invert and the top band sags.
+    const bendTop = -state.mood * 60
+    const bendBot = state.mood * 100
+    const top = boundaryPts(b1 + state.mood * -14, state.phase, amp, bendTop)
+    const bot = boundaryPts(b2, state.phase + 1.9, midAmp, bendBot)
 
     bands[0].setAttribute('d', bandPath(EDGE_TOP, top.map(([x, y]) => [x, y - GAP])))
     bands[1].setAttribute('d', bandPath(top.map(([x, y]) => [x, y + GAP]), bot.map(([x, y]) => [x, y - GAP])))
     bands[2].setAttribute('d', bandPath(bot.map(([x, y]) => [x, y + GAP]), EDGE_BOT))
 
-    // eyes ride the top band so the geometry carries them
-    const eyeY = clamp(b1 * 0.52, 78, 210)
+    // eyes ride the top band so the geometry carries them; smiling lifts them,
+    // frowning drops them with the sagging top band
+    const eyeY = clamp(b1 * 0.52 - state.mood * 16, 78, 210)
     for (const [id, dx, dy] of [['eyeL', -68, 14], ['eyeR', 28, -4]]) {
       const e = document.getElementById(id)
       e.setAttribute('cx', 264 + dx)
@@ -495,6 +514,7 @@
     el.classList.add('awake')     // eyes open
     await blink(2)
     state.agitationTarget = 0.15
+    setMood(0.8, 3500)            // waking up feels good
     await moveTo(W() * rand(0.25, 0.6), H() * rand(0.35, 0.6), 260)
     say('Observing. Ask me something if you like — just click.', 5200)
   }
@@ -503,6 +523,7 @@
     if (state.docked) return
     closeChat()
     bubble.classList.remove('show')
+    setMood(-0.35)                // a little wistful about leaving
     el.classList.remove('awake')  // eyes close first
     await wait(800)
     const d = dockPos()
@@ -567,18 +588,30 @@
     return quipBag.pop()
   }
   async function doQuip() {
+    setMood(0.7, 4200)
     say(nextQuip())
     await wait(4000)
   }
 
   async function doTrick() {
     state.agitationTarget = 0.8
+    setMood(1, 3000)
     const y0 = state.y
     await moveTo(state.x, Math.max(TOP_MARGIN, y0 - 120), 500)
     await moveTo(state.x, y0, 620)
     inner.style.transform = 'scaleY(0.9) scaleX(1.06)'
     await wait(200)
     inner.style.transform = ''
+    state.agitationTarget = 0.15
+  }
+
+  async function brood() {
+    // a spell of low mood: the top sags, the middle frowns, then it passes
+    setMood(-0.9)
+    state.agitationTarget = 0.05
+    if (Math.random() < 0.6) say('The loss curve plateaued. I need a moment.', 4200)
+    await wait(rand(5000, 9000))
+    setMood(0.5, 2500)
     state.agitationTarget = 0.15
   }
 
@@ -646,6 +679,7 @@
     history.push({ role: 'user', content: q })
     state.thinking = true
     state.agitationTarget = 0.85
+    setMood(-0.2)                 // concentration flattens the smile
     el.classList.add('thinking')
     const pending = addMsg('maxy', '')
     const dots = document.createElement('span')
@@ -655,10 +689,12 @@
       const answer = await window.maxyBridge.ask(history)
       pending.textContent = answer
       history.push({ role: 'assistant', content: answer })
+      setMood(0.85, 5000)         // answered — beam
     } catch (err) {
       pending.textContent = `(my weights are unreachable: ${err.message || err})`
       pending.classList.add('err')
       history.pop()
+      setMood(-1, 6000)           // failure — full frown, top band sags
     }
     chatlog.scrollTop = chatlog.scrollHeight
     state.thinking = false
@@ -708,6 +744,7 @@
         state.chatOpen ? closeChat() : openChat()
       } else {
         state.agitationTarget = 0.6
+        setMood(-0.6, 2000)       // being dragged is disagreeable
         setTimeout(() => (state.agitationTarget = 0.15), 1200)
       }
     }
@@ -735,6 +772,7 @@
     { logit: 1.1, fn: doQuip },
     { logit: 0.7, fn: rotateSimplex },
     { logit: 0.5, fn: doTrick },
+    { logit: 0.3, fn: brood },
     { logit: -0.4, fn: retreat },
   ]
   function sampleAction() {
