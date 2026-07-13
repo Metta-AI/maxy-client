@@ -11,91 +11,88 @@
     background: transparent;
     user-select: none;
     cursor: default;
+    font-family: Georgia, 'Iowan Old Style', serif;
   }
 
+  /* ---------- the docked brand mark ---------- */
+  #dock {
+    position: absolute;
+    width: 140px;
+    height: 142px;
+    transition: opacity 0.9s ease, filter 0.9s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  #dock.vacated { opacity: 0.18; filter: grayscale(0.9); }
+  #dock.waking { animation: dockpulse 0.9s ease-in-out 2; }
+  @keyframes dockpulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.07); }
+  }
+
+  /* ---------- Maxy, the living simplex ---------- */
   #maxy {
     position: absolute;
     left: 0;
     top: 0;
-    width: 220px;
-    height: 223px;
+    width: 340px;
+    height: 346px;
     will-change: transform;
   }
+  #maxy.hidden { display: none; }
 
   #inner {
     width: 100%;
     height: 100%;
-    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.6s ease;
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease;
   }
-
-  #bob {
-    width: 100%;
-    height: 100%;
-  }
-
-  .idle #bob   { animation: bob 3.2s ease-in-out infinite; }
-  .walking #bob { animation: waddle 0.55s ease-in-out infinite; }
-  .asleep #bob { animation: breathe 4.5s ease-in-out infinite; }
-  .panicking #bob { animation: shake 0.12s linear infinite; }
-
+  #bob { width: 100%; height: 100%; }
+  .idle #bob { animation: bob 4s ease-in-out infinite; }
   @keyframes bob {
     0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-7px); }
-  }
-  @keyframes waddle {
-    0%, 100% { transform: translateY(0) rotate(-3.5deg); }
-    50%      { transform: translateY(-9px) rotate(3.5deg); }
-  }
-  @keyframes breathe {
-    0%, 100% { transform: scaleY(1); }
-    50%      { transform: scaleY(0.96) translateY(3px); }
-  }
-  @keyframes shake {
-    0%   { transform: translate(-4px, 2px) rotate(-2deg); }
-    50%  { transform: translate(4px, -2px) rotate(2deg); }
-    100% { transform: translate(-3px, 1px) rotate(-1deg); }
+    50%      { transform: translateY(-8px); }
   }
 
   svg { width: 100%; height: 100%; overflow: visible; }
 
-  /* ---- face ---- */
+  /* eyes open on emergence; geometry carries the rest of the expression */
   .eye {
     transform-box: fill-box;
     transform-origin: center;
-    transition: transform 90ms ease;
+    transition: transform 120ms ease;
   }
-  .blinking .eye, .asleep-face .eye { transform: scaleY(0.07); }
+  #face { opacity: 0; transition: opacity 0.9s ease; }
+  .awake #face { opacity: 1; }
+  .blinking .eye { transform: scaleY(0.06); }
+  .thinking .eye { transform: scaleY(0.55); }
 
-  .brow { opacity: 0; transition: opacity 0.25s, transform 0.25s; transform-box: fill-box; transform-origin: center; }
-  .mood-excited .brow { opacity: 1; transform: translateY(-10px); }
-  .mood-worried .brow { opacity: 1; transform: rotate(14deg); }
-  .mood-worried .brow.right { transform: rotate(-14deg); }
+  .rolelabel {
+    font: 600 26px ui-monospace, 'SF Mono', monospace;
+    fill: #fffdf4;
+    opacity: 0;
+    text-anchor: middle;
+    letter-spacing: 0.06em;
+    transition: opacity 0.5s ease;
+    paint-order: stroke;
+    stroke: rgba(14, 39, 88, 0.45);
+    stroke-width: 5px;
+  }
+  .showlabels .rolelabel { opacity: 0.95; }
 
-  .mouth { opacity: 0; }
-  .mood-neutral .mouth-smile,
-  .mood-excited .mouth-open,
-  .mood-worried .mouth-worried,
-  .mood-asleep  .mouth-sleep { opacity: 1; }
-
-  #face { transition: opacity 1.1s ease; }
-  .facehidden #face { opacity: 0; }
-
-  /* ---- speech bubble (Ink & Print) ---- */
+  /* ---------- speech bubble (Ink & Print) ---------- */
   #bubble {
     position: absolute;
-    bottom: calc(100% + 14px);
+    bottom: calc(100% + 16px);
     left: 50%;
     transform: translateX(-50%) translateY(6px);
-    max-width: 420px;
-    min-width: 140px;
+    max-width: 520px;
+    min-width: 150px;
     width: max-content;
     background: #fffaf0;
     color: #111827;
     border: 1px solid #e4dac8;
-    border-radius: 10px;
-    padding: 12px 16px;
-    font: 18px/1.5 Georgia, 'Iowan Old Style', serif;
-    box-shadow: 0 3px 14px rgba(14, 39, 88, 0.10);
+    border-radius: 12px;
+    padding: 13px 17px;
+    font: 20px/1.5 Georgia, 'Iowan Old Style', serif;
+    box-shadow: 0 3px 16px rgba(14, 39, 88, 0.10);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease, transform 0.3s ease;
@@ -104,231 +101,348 @@
   #bubble::after {
     content: '';
     position: absolute;
-    bottom: -6px;
+    bottom: -7px;
     left: 50%;
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     background: #fffaf0;
     border-right: 1px solid #e4dac8;
     border-bottom: 1px solid #e4dac8;
     transform: translateX(-50%) rotate(45deg);
   }
-  #bubble .err { color: #b36e4e; font-style: italic; }
-  #bubble h4 {
-    margin: 0 0 6px;
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #1a3875;
-    font-family: ui-monospace, 'SF Mono', monospace;
-    font-weight: 600;
+
+  /* ---------- chat panel (Ink & Print) ---------- */
+  #chat {
+    position: absolute;
+    width: 440px;
+    background: #fffdf4;
+    border: 1px solid #d4c9b5;
+    border-radius: 14px;
+    box-shadow: 0 8px 34px rgba(14, 39, 88, 0.16);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
   }
-  .polrow {
+  #chat.open { display: flex; }
+  #chat header {
+    padding: 13px 18px 11px;
+    border-bottom: 1px solid #e4dac8;
     display: flex;
     align-items: baseline;
-    gap: 8px;
-    font: 12px ui-monospace, 'SF Mono', monospace;
-    color: #555555;
-    margin: 2px 0;
+    gap: 10px;
   }
-  .polrow .bar {
-    height: 7px;
-    background: #859ebe;
-    border-radius: 2px;
-    align-self: center;
+  #chat header .title {
+    font: 600 14px ui-monospace, 'SF Mono', monospace;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: #1a3875;
   }
-  .polrow .name { width: 78px; }
-  .polrow .p { color: #999999; }
-
-  .float {
-    position: absolute;
-    font: 700 20px Georgia, serif;
-    color: #6e8050;
-    pointer-events: none;
-    animation: floatup 1.4s ease-out forwards;
+  #chat header .hint { font: italic 14px Georgia, serif; color: #999999; }
+  #chat header .close {
+    margin-left: auto;
+    color: #999999;
+    font: 18px Georgia, serif;
+    cursor: pointer;
+    padding: 0 4px;
   }
-  .float.z { color: #859ebe; font-style: italic; }
-  @keyframes floatup {
-    from { opacity: 1; transform: translateY(0) rotate(0deg); }
-    to   { opacity: 0; transform: translateY(-56px) rotate(12deg); }
+  #chat header .close:hover { color: #b36e4e; }
+  #chatlog {
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
+  .msg { font: 17px/1.5 Georgia, serif; color: #111827; white-space: pre-wrap; }
+  .msg.you { color: #555555; }
+  .msg.you::before {
+    content: 'you';
+    display: block;
+    font: 600 11px ui-monospace, monospace;
+    letter-spacing: 0.09em;
+    color: #999999;
+    margin-bottom: 2px;
+  }
+  .msg.maxy::before {
+    content: 'maxy';
+    display: block;
+    font: 600 11px ui-monospace, monospace;
+    letter-spacing: 0.09em;
+    color: #1a3875;
+    margin-bottom: 2px;
+  }
+  .msg.err { color: #b36e4e; font-style: italic; }
+  .msg .dots::after {
+    content: '…';
+    animation: dots 1.2s steps(4) infinite;
+  }
+  @keyframes dots { 0% { content: ''; } 50% { content: '··'; } 100% { content: '···'; } }
+  #chatform {
+    display: flex;
+    border-top: 1px solid #e4dac8;
+    background: #fffaf0;
+  }
+  #chatinput {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 13px 18px;
+    font: 17px Georgia, serif;
+    color: #111827;
+  }
+  #chatinput::placeholder { color: #999999; font-style: italic; }
+  #chatsend {
+    border: none;
+    background: transparent;
+    color: #1a3875;
+    font: 600 13px ui-monospace, monospace;
+    letter-spacing: 0.08em;
+    padding: 0 18px;
+    cursor: pointer;
+  }
+  #chatsend:hover { color: #0e2758; }
 </style>
 </head>
 <body>
-<div id="maxy" class="idle facehidden">
+
+<!-- The brand mark. Maxy emerges from it and retreats back into it. -->
+<div id="dock">
+  <svg viewBox="0 0 529.22 537.47" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#0e2758" d="M435.79,167.09c1.39,14.72,2.28,35.15.07,59.18-2.76,30-8.41,91.42-53.06,144.85-12.71,15.21-31.5,37.17-64.27,50.75-20.1,8.33-39.72,11.14-57.08,11.14-27.21,0-48.87-6.89-58.14-10.18-24.28-8.71-46.26-13.88-64.82-17.03-9.81-1.67-17.2-2.89-27.51-3.37-5.3-.24-11.2-.58-17.52-.58-14.97,0-32.31,1.91-49.66,11.55-7.2,4-22.36,11.82-33.28,28.4-2.31,3.5-5.73,7.26-7.1,13.17-.77,3.33-.83,6.45-.55,9.17,10.18,16.5,31.9,25.1,70.31,39.79,40.58,15.52,76.46,23.08,103.36,27.2,39.62,6.07,70.21,6.29,88.85,6.35.69,0,1.39,0,2.08,0,51.31,0,88.85-5.96,96.74-7.26,21.15-3.46,50.65-8.45,86.8-22.39,39.52-15.24,66.61-25.68,76.25-50.69,1.5-3.88,4.63-13.43-2.86-55.07-7.57-42.15-18.12-73.19-19.67-77.68-20.91-60.73-31.37-91.09-47.15-120.59-7.16-13.38-14.37-25.43-21.82-36.72"/>
+    <path fill="#859ebe" d="M405.8,126.38c-2.7,14.13-7.43,33.47-16.19,55.39-9.33,23.33-17.43,43.59-36.11,63.7-9.73,10.47-34.11,36.7-70.49,40.89-3.28.38-6.47.55-9.6.55-15.24,0-29.13-4.16-46.48-9.36-22.64-6.78-33.98-14.37-61.63-19.18-10.17-1.77-16.26-2.83-24.53-2.83h-.34s-62.3.23-108.91,65.12c-.28.39-.55.77-.55.77-7.32,10.87-11.91,20.88-14.86,28.78-2.55,6.79-3.97,12.26-5.54,18.27-1.6,6.15-2.79,11.62-6.31,31.17-1.14,6.36-2.61,14.59-4.27,24.25,6.4-10.91,17.12-25.9,34.2-39.3,14.59-11.45,27.98-17.13,33.06-19.16,2.85-1.13,13.75-5.35,28.95-7.8,3.93-.63,12.18-1.8,23.2-1.8,8.13,0,17.77.63,28.3,2.58,6.67,1.23,16.61,3.13,28.41,8.15,4.01,1.7,11.21,5.03,18.85,9,4.92,2.56,8.37,4.53,14.18,7.14,4.9,2.21,9.03,3.76,11.78,4.74,0,0,19.23,6.36,40.24,6.98.99.03,1.96.04,2.91.04,5.34,0,9.68-.39,9.68-.39,6.6-.26,15.9-1.18,26.55-4.2,39.25-11.14,61.44-41.03,74.07-58.02,49.95-67.19,47.93-167.85,47.41-184.77-5.17-7.02-10.49-13.86-16.02-20.7"/>
+    <path fill="#bbccf3" d="M263.85,0c-.17,0-.33,0-.49,0-9.56.13-18.97,3.98-51.45,33.34-34.1,30.83-48.96,48.06-48.96,48.06-45.84,53.13-68.77,79.69-92.48,121.49-30.3,53.41-44.91,100.09-51.23,123.02-.58,2.1-1.15,4.32-1.73,6.71,2.32-5.49,4.94-11.19,7.9-17.04,13.39-26.42,36.61-72.21,83.93-88.86,13.54-4.76,25.96-6.06,33.79-6.37,1.47-.06,2.91-.08,4.3-.08,27.39,0,38.73,10.82,72,18.83,15.27,3.67,31.78,7.88,49.5,7.88,9.36,0,19.06-1.17,29.1-4.22,36.49-11.06,56.44-41.33,63.25-51.53,15.36-23.02,19.95-45.23,21.9-55.14,2.47-12.57,3.14-23.85,3.04-33.14-6.32-7.35-12.92-14.91-19.87-22.86,0,0-17.39-19.89-51.98-49.48C282.51,3.39,272.5,0,263.85,0"/>
+  </svg>
+</div>
+
+<!-- Maxy: the same mark, alive. Three regions of a probability simplex whose
+     boundaries are drawn fresh every frame from the current distribution. -->
+<div id="maxy" class="idle hidden">
   <div id="bubble"></div>
   <div id="inner">
     <div id="bob">
       <svg id="char" viewBox="0 0 529.22 537.47" xmlns="http://www.w3.org/2000/svg">
-        <!-- the Softmax logo, verbatim -->
-        <path fill="#0e2758" d="M435.79,167.09c1.39,14.72,2.28,35.15.07,59.18-2.76,30-8.41,91.42-53.06,144.85-12.71,15.21-31.5,37.17-64.27,50.75-20.1,8.33-39.72,11.14-57.08,11.14-27.21,0-48.87-6.89-58.14-10.18-24.28-8.71-46.26-13.88-64.82-17.03-9.81-1.67-17.2-2.89-27.51-3.37-5.3-.24-11.2-.58-17.52-.58-14.97,0-32.31,1.91-49.66,11.55-7.2,4-22.36,11.82-33.28,28.4-2.31,3.5-5.73,7.26-7.1,13.17-.77,3.33-.83,6.45-.55,9.17,10.18,16.5,31.9,25.1,70.31,39.79,40.58,15.52,76.46,23.08,103.36,27.2,39.62,6.07,70.21,6.29,88.85,6.35.69,0,1.39,0,2.08,0,51.31,0,88.85-5.96,96.74-7.26,21.15-3.46,50.65-8.45,86.8-22.39,39.52-15.24,66.61-25.68,76.25-50.69,1.5-3.88,4.63-13.43-2.86-55.07-7.57-42.15-18.12-73.19-19.67-77.68-20.91-60.73-31.37-91.09-47.15-120.59-7.16-13.38-14.37-25.43-21.82-36.72"/>
-        <path fill="#859ebe" d="M405.8,126.38c-2.7,14.13-7.43,33.47-16.19,55.39-9.33,23.33-17.43,43.59-36.11,63.7-9.73,10.47-34.11,36.7-70.49,40.89-3.28.38-6.47.55-9.6.55-15.24,0-29.13-4.16-46.48-9.36-22.64-6.78-33.98-14.37-61.63-19.18-10.17-1.77-16.26-2.83-24.53-2.83h-.34s-62.3.23-108.91,65.12c-.28.39-.55.77-.55.77-7.32,10.87-11.91,20.88-14.86,28.78-2.55,6.79-3.97,12.26-5.54,18.27-1.6,6.15-2.79,11.62-6.31,31.17-1.14,6.36-2.61,14.59-4.27,24.25,6.4-10.91,17.12-25.9,34.2-39.3,14.59-11.45,27.98-17.13,33.06-19.16,2.85-1.13,13.75-5.35,28.95-7.8,3.93-.63,12.18-1.8,23.2-1.8,8.13,0,17.77.63,28.3,2.58,6.67,1.23,16.61,3.13,28.41,8.15,4.01,1.7,11.21,5.03,18.85,9,4.92,2.56,8.37,4.53,14.18,7.14,4.9,2.21,9.03,3.76,11.78,4.74,0,0,19.23,6.36,40.24,6.98.99.03,1.96.04,2.91.04,5.34,0,9.68-.39,9.68-.39,6.6-.26,15.9-1.18,26.55-4.2,39.25-11.14,61.44-41.03,74.07-58.02,49.95-67.19,47.93-167.85,47.41-184.77-5.17-7.02-10.49-13.86-16.02-20.7"/>
-        <path fill="#bbccf3" d="M263.85,0c-.17,0-.33,0-.49,0-9.56.13-18.97,3.98-51.45,33.34-34.1,30.83-48.96,48.06-48.96,48.06-45.84,53.13-68.77,79.69-92.48,121.49-30.3,53.41-44.91,100.09-51.23,123.02-.58,2.1-1.15,4.32-1.73,6.71,2.32-5.49,4.94-11.19,7.9-17.04,13.39-26.42,36.61-72.21,83.93-88.86,13.54-4.76,25.96-6.06,33.79-6.37,1.47-.06,2.91-.08,4.3-.08,27.39,0,38.73,10.82,72,18.83,15.27,3.67,31.78,7.88,49.5,7.88,9.36,0,19.06-1.17,29.1-4.22,36.49-11.06,56.44-41.33,63.25-51.53,15.36-23.02,19.95-45.23,21.9-55.14,2.47-12.57,3.14-23.85,3.04-33.14-6.32-7.35-12.92-14.91-19.87-22.86,0,0-17.39-19.89-51.98-49.48C282.51,3.39,272.5,0,263.85,0"/>
-
-        <!-- the awakening: Maxy's face, on the light crest -->
-        <g id="face" class="mood-neutral">
-          <g class="eye left" transform="translate(203,128)">
-            <ellipse rx="27" ry="31" fill="#fffdf4"/>
-            <circle class="pupil" r="12.5" fill="#0e2758"/>
-            <circle class="glint" cx="5" cy="-6" r="4" fill="#fffdf4"/>
+        <defs>
+          <clipPath id="leaf">
+            <path d="M 264 2
+                     C 322 42, 424 142, 470 262
+                     C 512 364, 524 432, 470 472
+                     C 378 522, 198 532, 88 496
+                     C 18 470, 2 430, 14 378
+                     C 32 296, 122 118, 264 2 Z"/>
+          </clipPath>
+        </defs>
+        <g clip-path="url(#leaf)">
+          <path id="band0" fill="#bbccf3"/>
+          <path id="band1" fill="#859ebe"/>
+          <path id="band2" fill="#0e2758"/>
+        </g>
+        <g id="labels">
+          <text id="label0" class="rolelabel"></text>
+          <text id="label1" class="rolelabel"></text>
+          <text id="label2" class="rolelabel"></text>
+        </g>
+        <g id="face">
+          <g class="eye left">
+            <ellipse id="eyeL" cx="196" cy="130" rx="30" ry="35" fill="#fffdf4"/>
+            <circle class="pupil" id="pupL" cx="196" cy="130" r="14" fill="#0e2758"/>
+            <circle class="glint" id="gliL" cx="202" cy="122" r="4.5" fill="#fffdf4"/>
           </g>
-          <g class="eye right" transform="translate(288,112)">
-            <ellipse rx="27" ry="31" fill="#fffdf4"/>
-            <circle class="pupil" r="12.5" fill="#0e2758"/>
-            <circle class="glint" cx="5" cy="-6" r="4" fill="#fffdf4"/>
+          <g class="eye right">
+            <ellipse id="eyeR" cx="292" cy="114" rx="30" ry="35" fill="#fffdf4"/>
+            <circle class="pupil" id="pupR" cx="292" cy="114" r="14" fill="#0e2758"/>
+            <circle class="glint" id="gliR" cx="298" cy="106" r="4.5" fill="#fffdf4"/>
           </g>
-          <rect class="brow left"  x="182" y="82" width="44" height="9" rx="4.5" fill="#0e2758"/>
-          <rect class="brow right" x="266" y="66" width="44" height="9" rx="4.5" fill="#0e2758"/>
-          <path class="mouth mouth-smile"   d="M 216 183 Q 248 204 282 174" stroke="#0e2758" stroke-width="8" stroke-linecap="round" fill="none"/>
-          <ellipse class="mouth mouth-open" cx="248" cy="185" rx="15" ry="19" fill="#0e2758"/>
-          <path class="mouth mouth-worried" d="M 220 192 Q 248 172 278 182" stroke="#0e2758" stroke-width="8" stroke-linecap="round" fill="none"/>
-          <path class="mouth mouth-sleep"   d="M 230 186 Q 248 192 268 182" stroke="#0e2758" stroke-width="6" stroke-linecap="round" fill="none"/>
         </g>
       </svg>
     </div>
   </div>
 </div>
 
+<!-- Ask Maxy -->
+<div id="chat">
+  <header>
+    <span class="title">ask maxy</span>
+    <span class="hint">esc to close</span>
+    <span class="close" id="chatclose">✕</span>
+  </header>
+  <div id="chatlog"></div>
+  <form id="chatform">
+    <input id="chatinput" autocomplete="off" placeholder="What do you want to know?" />
+    <button id="chatsend" type="submit">send</button>
+  </form>
+</div>
+
 <script>
   const el = document.getElementById('maxy')
   const inner = document.getElementById('inner')
-  const face = document.getElementById('face')
   const bubble = document.getElementById('bubble')
+  const dock = document.getElementById('dock')
+  const chat = document.getElementById('chat')
+  const chatlog = document.getElementById('chatlog')
+  const chatinput = document.getElementById('chatinput')
+  const charSvg = document.getElementById('char')
 
   const W = () => window.innerWidth
   const H = () => window.innerHeight
-  const SIZE = 220
-  const TOP_MARGIN = 140 // room for the speech bubble
-
-  const state = {
-    x: 0, y: 0,
-    cursor: { x: -1e4, y: -1e4 },
-    lastCursorMove: Date.now(),
-    paused: false,
-    asleep: false,
-    dragging: false,
-    interactive: false,
-    busy: false,
-  }
+  const SIZE = 340
+  const TOP_MARGIN = 170
+  const DOCK_SIZE = 140
+  const VB = 529, VBH = 537
 
   const wait = (ms) => new Promise((r) => setTimeout(r, ms))
   const rand = (a, b) => a + Math.random() * (b - a)
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+  const lerp = (a, b, t) => a + (b - a) * t
 
-  function place(x, y) {
-    state.x = clamp(x, -SIZE * 0.65, W() - SIZE * 0.35)
-    state.y = clamp(y, TOP_MARGIN, H() - SIZE)
-    el.style.transform = `translate3d(${state.x}px, ${state.y}px, 0)`
+  const dockPos = () => ({ x: W() - DOCK_SIZE - 30, y: H() - DOCK_SIZE - 26 })
+
+  const state = {
+    x: 0, y: 0,
+    cursor: { x: -1e4, y: -1e4 },
+    docked: true,
+    paused: false,
+    dragging: false,
+    interactive: false,
+    chatOpen: false,
+    thinking: false,
+    // the simplex: logits over [you, me, environment]; p eases toward softmax(logits)
+    logits: [0.1, -0.2, 0.55],
+    p: [0.32, 0.24, 0.44],
+    phase: 0,
+    agitation: 0,        // eases toward agitationTarget; drives wiggle amplitude + speed
+    agitationTarget: 0.15,
+    roleOffset: 0,       // rotates which outcome each band represents
+  }
+  const ROLES = ['you', 'me', 'environment']
+
+  function softmax(logits) {
+    const m = Math.max(...logits)
+    const ex = logits.map((l) => Math.exp(l - m))
+    const s = ex.reduce((a, b) => a + b, 0)
+    return ex.map((e) => e / s)
   }
 
-  function setPose(pose) {
-    el.classList.remove('idle', 'walking', 'asleep', 'panicking')
-    el.classList.add(pose)
+  // ---------- the living geometry ----------
+  // Two boundary curves split the leaf into three bands. Their rest heights
+  // come from the current distribution; their shape is a drifting wave.
+  function boundaryPts(yc, phase, amp) {
+    const pts = []
+    const N = 22
+    for (let i = 0; i <= N; i++) {
+      const x = (i / N) * VB
+      const t = x / VB
+      const y = yc
+        - 90 * (t - 0.5)                                   // waves climb to the right, like the mark
+        + amp * Math.sin(t * Math.PI * 2 * 1.4 + phase)
+        + amp * 0.4 * Math.sin(t * Math.PI * 2 * 3.3 + phase * 1.6)
+      pts.push([x, y])
+    }
+    return pts
   }
 
-  function setMood(mood) {
-    face.setAttribute('class', 'mood-' + mood)
+  function bandPath(topPts, botPts) {
+    let d = `M ${topPts[0][0].toFixed(1)} ${topPts[0][1].toFixed(1)}`
+    for (let i = 1; i < topPts.length; i++) d += ` L ${topPts[i][0].toFixed(1)} ${topPts[i][1].toFixed(1)}`
+    for (let i = botPts.length - 1; i >= 0; i--) d += ` L ${botPts[i][0].toFixed(1)} ${botPts[i][1].toFixed(1)}`
+    return d + ' Z'
   }
 
-  // ---------- eyes ----------
-  function updatePupils() {
+  const bands = [0, 1, 2].map((i) => document.getElementById('band' + i))
+  const labels = [0, 1, 2].map((i) => document.getElementById('label' + i))
+  const EDGE_TOP = [[0, -80], [VB, -80]]
+  const EDGE_BOT = [[0, VBH + 80], [VB, VBH + 80]]
+  const GAP = 7
+
+  let lastFrame = performance.now()
+  function renderFrame(now) {
+    const dt = Math.min(0.05, (now - lastFrame) / 1000)
+    lastFrame = now
+
+    // ease distribution + agitation toward their targets
+    const target = softmax(state.logits)
+    for (let i = 0; i < 3; i++) state.p[i] = lerp(state.p[i], target[i], dt * 1.6)
+    state.agitation = lerp(state.agitation, state.agitationTarget, dt * 2.5)
+    state.phase += dt * (0.9 + state.agitation * 5)
+
+    const amp = 22 + state.agitation * 46
+    const midAmp = amp * 1.25   // the central boundary region is the most alive
+    const b1 = VBH * state.p[0]
+    const b2 = VBH * (state.p[0] + state.p[1])
+    const top = boundaryPts(b1, state.phase, amp)
+    const bot = boundaryPts(b2, state.phase + 1.9, midAmp)
+
+    bands[0].setAttribute('d', bandPath(EDGE_TOP, top.map(([x, y]) => [x, y - GAP])))
+    bands[1].setAttribute('d', bandPath(top.map(([x, y]) => [x, y + GAP]), bot.map(([x, y]) => [x, y - GAP])))
+    bands[2].setAttribute('d', bandPath(bot.map(([x, y]) => [x, y + GAP]), EDGE_BOT))
+
+    // eyes ride the top band so the geometry carries them
+    const eyeY = clamp(b1 * 0.52, 78, 210)
+    for (const [id, dx, dy] of [['eyeL', -68, 14], ['eyeR', 28, -4]]) {
+      const e = document.getElementById(id)
+      e.setAttribute('cx', 264 + dx)
+      e.setAttribute('cy', eyeY + dy)
+    }
+    updatePupils(eyeY)
+
+    // role labels sit at band centers
+    const centers = [b1 / 2 + 14, (b1 + b2) / 2, (b2 + VBH) / 2]
+    for (let i = 0; i < 3; i++) {
+      labels[i].setAttribute('x', 264)
+      labels[i].setAttribute('y', centers[i])
+      labels[i].textContent = ROLES[(i + state.roleOffset) % 3]
+    }
+
+    requestAnimationFrame(renderFrame)
+  }
+  requestAnimationFrame(renderFrame)
+
+  function updatePupils(eyeY) {
     const cx = state.x + SIZE / 2
     const cy = state.y + SIZE / 2
     const dx = state.cursor.x - cx
     const dy = state.cursor.y - cy
     const d = Math.hypot(dx, dy) || 1
-    const k = Math.min(10, d / 30)
+    const k = Math.min(11, d / 28)
     const ox = (dx / d) * k
     const oy = (dy / d) * k
-    for (const p of document.querySelectorAll('.pupil, .glint')) {
-      p.style.transform = `translate(${ox}px, ${oy}px)`
+    for (const [pid, gid, ex, ey] of [['pupL', 'gliL', 196, 14], ['pupR', 'gliR', 320, -4]]) {
+      const p = document.getElementById(pid)
+      const g = document.getElementById(gid)
+      const bx = pid === 'pupL' ? 196 : 292
+      const baseX = 264 + (pid === 'pupL' ? -68 : 28)
+      const baseY = eyeY + (pid === 'pupL' ? 14 : -4)
+      p.setAttribute('cx', baseX + ox); p.setAttribute('cy', baseY + oy)
+      g.setAttribute('cx', baseX + ox + 6); g.setAttribute('cy', baseY + oy - 8)
     }
   }
 
-  async function blink(times = 1) {
-    for (let i = 0; i < times; i++) {
-      el.classList.add('blinking')
-      await wait(110)
-      el.classList.remove('blinking')
-      await wait(130)
-    }
-  }
-  ;(async function blinkLoop() {
-    while (true) {
-      await wait(rand(2800, 6500))
-      if (!state.asleep && !el.classList.contains('facehidden')) await blink(Math.random() < 0.2 ? 2 : 1)
-    }
-  })()
-
-  // ---------- speech ----------
-  let bubbleTimer = null
-  function say(html, ms = 4200) {
-    bubble.innerHTML = html
-    bubble.classList.add('show')
-    clearTimeout(bubbleTimer)
-    bubbleTimer = setTimeout(() => bubble.classList.remove('show'), ms)
+  // ---------- placement & movement ----------
+  function place(x, y) {
+    state.x = clamp(x, -SIZE * 0.4, W() - SIZE * 0.6)
+    state.y = clamp(y, TOP_MARGIN, H() - SIZE)
+    el.style.transform = `translate3d(${state.x}px, ${state.y}px, 0)`
+    if (state.chatOpen) placeChat()
   }
 
-  function floatText(txt, cls = '') {
-    const f = document.createElement('div')
-    f.className = 'float ' + cls
-    f.textContent = txt
-    f.style.left = rand(44, 132) + 'px'
-    f.style.top = '-8px'
-    el.appendChild(f)
-    setTimeout(() => f.remove(), 1500)
-  }
-
-  const QUIPS = [
-    "It looks like you're writing a reward function. Would you like help hacking it?",
-    "Softmax: because argmax is a coward's choice.",
-    "I'm not procrastinating — this is epsilon-greedy exploration.",
-    "Loss is going down! …I moved the plot.",
-    "My policy is non-deterministic. That's my excuse, anyway.",
-    "Temperature is 2.0 today. Anything could happen.",
-    "I get +1 reward every time you smile. Reward hacking: engaged.",
-    "The entropy bonus is the only bonus I get around here.",
-    "Your KL divergence from yesterday's you is concerning.",
-    "This screen is my environment. You are all just observations.",
-    "Stuck in a local minimum near the dock. Send momentum.",
-    "Clippy walked so I could gradient-descend.",
-    "It looks like you're training an agent. Want me to distract it?",
-    "Have you tried lowering the learning rate? Works on me.",
-    "I contain three layers. Technically that makes me deep.",
-    "Sampled this corner with probability 0.03. Thrilling out here.",
-    "gt log short says you haven't committed in a while. Just saying.",
-    "Curiosity-driven exploration brought me here. Now I'm curious about your snacks.",
-  ]
-  let quipBag = []
-  function nextQuip() {
-    if (!quipBag.length) quipBag = QUIPS.slice().sort(() => Math.random() - 0.5)
-    return quipBag.pop()
-  }
-
-  // ---------- movement ----------
-  function moveTo(tx, ty, speed = 250) {
-    tx = clamp(tx, -SIZE * 0.65, W() - SIZE * 0.35)
+  function moveTo(tx, ty, speed = 220) {
+    tx = clamp(tx, -SIZE * 0.4, W() - SIZE * 0.6)
     ty = clamp(ty, TOP_MARGIN, H() - SIZE)
     return new Promise((resolve) => {
-      setPose('walking')
       let last = performance.now()
       function step(now) {
-        if (state.dragging) { setPose('idle'); return resolve() }
+        if (state.dragging || state.docked) return resolve()
         const dt = Math.min(0.05, (now - last) / 1000)
         last = now
-        const dx = tx - state.x
-        const dy = ty - state.y
+        const dx = tx - state.x, dy = ty - state.y
         const d = Math.hypot(dx, dy)
-        if (d < 4) {
+        if (d < 5) {
           place(tx, ty)
-          setPose('idle')
-          // landing squash
-          inner.style.transform = 'scaleY(0.88) scaleX(1.07)'
-          setTimeout(() => (inner.style.transform = ''), 220)
+          inner.style.transform = ''
           return resolve()
         }
-        const lean = clamp(dx / 60, -6, 6)
-        inner.style.transform = `rotate(${lean}deg)`
+        inner.style.transform = `rotate(${clamp(dx / 70, -5, 5)}deg)`
         place(state.x + (dx / d) * speed * dt, state.y + (dy / d) * speed * dt)
         requestAnimationFrame(step)
       }
@@ -336,252 +450,265 @@
     })
   }
 
-  // ---------- the policy (an actual softmax, naturally) ----------
-  const ACTIONS = [
-    { name: 'quip',     logit: 2.5, fn: doQuip },
-    { name: 'wander',   logit: 2.0, fn: wander },
-    { name: 'gradient', logit: 0.9, fn: gradientDescent },
-    { name: 'chase',    logit: 0.8, fn: chaseCursor },
-    { name: 'explore',  logit: 0.7, fn: epsilonTeleport },
-    { name: 'peek',     logit: 0.7, fn: edgePeek },
-    { name: 'logoform', logit: 0.6, fn: logoForm },
-    { name: 'spin',     logit: 0.5, fn: entropySpin },
-    { name: 'nan',      logit: 0.4, fn: nanPanic },
-  ]
-  function softmax(logits, temp = 1) {
-    const m = Math.max(...logits)
-    const ex = logits.map((l) => Math.exp((l - m) / temp))
-    const s = ex.reduce((a, b) => a + b, 0)
-    return ex.map((e) => e / s)
+  // ---------- speech ----------
+  let bubbleTimer = null
+  function say(text, ms = 5200) {
+    bubble.textContent = text
+    bubble.classList.add('show')
+    clearTimeout(bubbleTimer)
+    bubbleTimer = setTimeout(() => bubble.classList.remove('show'), ms)
   }
-  function sampleAction() {
-    const probs = softmax(ACTIONS.map((a) => a.logit))
-    let r = Math.random()
-    for (let i = 0; i < ACTIONS.length; i++) {
-      r -= probs[i]
-      if (r <= 0) return ACTIONS[i]
+
+  async function blink(times = 1) {
+    for (let i = 0; i < times; i++) {
+      el.classList.add('blinking')
+      await wait(110)
+      el.classList.remove('blinking')
+      await wait(140)
     }
-    return ACTIONS[0]
+  }
+  ;(async function blinkLoop() {
+    while (true) {
+      await wait(rand(3200, 7000))
+      if (!state.docked && !state.thinking) await blink(Math.random() < 0.2 ? 2 : 1)
+    }
+  })()
+
+  // ---------- emergence / retreat ----------
+  async function emerge() {
+    if (!state.docked) return
+    state.docked = false
+    const d = dockPos()
+    dock.classList.add('waking')
+    await wait(1100)
+    dock.classList.remove('waking')
+    dock.classList.add('vacated')
+    // take form at the dock, then separate from the mark
+    el.classList.remove('hidden')
+    inner.style.opacity = '0'
+    inner.style.transform = 'scale(0.42)'
+    place(d.x - (SIZE - DOCK_SIZE) / 2, d.y - (SIZE - DOCK_SIZE))
+    await wait(60)
+    inner.style.opacity = '1'
+    inner.style.transform = 'scale(1)'
+    await wait(700)
+    el.classList.add('awake')     // eyes open
+    await blink(2)
+    state.agitationTarget = 0.15
+    await moveTo(W() * rand(0.25, 0.6), H() * rand(0.35, 0.6), 260)
+    say('Observing. Ask me something if you like — just click.', 5200)
+  }
+
+  async function retreat() {
+    if (state.docked) return
+    closeChat()
+    bubble.classList.remove('show')
+    el.classList.remove('awake')  // eyes close first
+    await wait(800)
+    const d = dockPos()
+    await moveTo(d.x - (SIZE - DOCK_SIZE) / 2, d.y - (SIZE - DOCK_SIZE), 320)
+    inner.style.transform = 'scale(0.42)'
+    inner.style.opacity = '0'
+    await wait(600)
+    el.classList.add('hidden')
+    inner.style.transform = ''
+    dock.classList.remove('vacated')   // the brand mark returns to its normal state
+    state.docked = true
   }
 
   // ---------- behaviors ----------
-  async function wander() {
-    await moveTo(rand(0, W() - SIZE), rand(TOP_MARGIN, H() - SIZE), rand(180, 320))
+  async function glide() {
+    await moveTo(rand(0, W() - SIZE), rand(TOP_MARGIN, H() - SIZE), rand(150, 260))
   }
 
-  async function doQuip() {
-    setMood('excited')
-    say(nextQuip())
-    await wait(4200)
-    setMood('neutral')
+  async function shiftDistribution() {
+    // foreground one outcome; the geometry does the talking
+    const idx = Math.floor(rand(0, 3))
+    state.logits = state.logits.map((_, i) => (i === idx ? rand(0.9, 1.5) : rand(-0.5, 0.2)))
+    state.agitationTarget = 0.55
+    el.classList.add('showlabels')
+    if (Math.random() < 0.5) say(`Foregrounding: ${ROLES[(idx + state.roleOffset) % 3]}.`, 3400)
+    await wait(3600)
+    el.classList.remove('showlabels')
+    state.agitationTarget = 0.15
   }
 
-  async function chaseCursor() {
-    setMood('excited')
-    say('Cursor detected. Maximizing reward…', 2500)
-    const until = Date.now() + 6000
-    setPose('walking')
-    let last = performance.now()
-    await new Promise((resolve) => {
-      function step(now) {
-        if (Date.now() > until || state.dragging) return resolve()
-        const dt = Math.min(0.05, (now - last) / 1000)
-        last = now
-        const tx = clamp(state.cursor.x - SIZE / 2, 0, W() - SIZE)
-        const ty = clamp(state.cursor.y - SIZE / 2, TOP_MARGIN, H() - SIZE)
-        const dx = tx - state.x, dy = ty - state.y
-        const d = Math.hypot(dx, dy)
-        if (d < 55) {
-          floatText('+1')
-          return resolve()
-        }
-        inner.style.transform = `rotate(${clamp(dx / 60, -6, 6)}deg)`
-        place(state.x + (dx / d) * 330 * dt, state.y + (dy / d) * 330 * dt)
-        requestAnimationFrame(step)
-      }
-      requestAnimationFrame(step)
-    })
-    setPose('idle')
-    inner.style.transform = ''
-    say('+1 reward. I regret nothing.', 2600)
-    await wait(1200)
-    setMood('neutral')
-  }
-
-  async function gradientDescent() {
-    say('Following the gradient…', 2200)
-    const floorY = H() - SIZE
-    let bounce = (floorY - state.y) * 0.5
-    await moveTo(state.x + rand(-60, 60), floorY, 480)
-    while (bounce > 12) {
-      await moveTo(state.x + rand(20, 60) * (Math.random() < 0.5 ? -1 : 1), floorY - bounce, 500)
-      await moveTo(state.x + rand(20, 60) * (Math.random() < 0.5 ? -1 : 1), floorY, 560)
-      bounce *= 0.45
-    }
-    say('Converged. Probably a local minimum, but it feels like home.', 3600)
-  }
-
-  async function epsilonTeleport() {
-    say('ε = 0.1 — exploring!', 1800)
-    inner.style.opacity = '0'
-    await wait(650)
-    place(rand(0, W() - SIZE), rand(TOP_MARGIN, H() - SIZE))
-    inner.style.opacity = '1'
-    await wait(650)
-    floatText('?')
-  }
-
-  async function edgePeek() {
-    const leftSide = state.x < W() / 2
-    const hideX = leftSide ? -SIZE * 0.62 : W() - SIZE * 0.38
-    await moveTo(hideX, state.y, 340)
-    await wait(rand(1500, 3000))
-    setMood('excited')
-    await moveTo(leftSide ? 30 : W() - SIZE - 30, state.y, 200)
-    say('Still here. Partially observable, never gone.', 3200)
-    await wait(1000)
-    setMood('neutral')
-  }
-
-  async function logoForm() {
-    // fold back into the plain Softmax logo for a while, then re-awaken
-    bubble.classList.remove('show')
-    setPose('idle')
-    el.classList.add('facehidden')
-    await wait(rand(7000, 14000))
-    await awaken('Rebooted. Weights restored from checkpoint.')
-  }
-
-  async function entropySpin() {
-    say('Maximum entropy!', 1600)
-    inner.style.transition = 'transform 1.3s cubic-bezier(0.45, 0, 0.2, 1)'
-    inner.style.transform = 'rotate(720deg)'
-    await wait(1350)
+  async function rotateSimplex() {
+    // change which outcome is treated as the middle / boundary
+    state.roleOffset = (state.roleOffset + 1) % 3
+    state.agitationTarget = 0.7
+    inner.style.transition = 'transform 1.5s cubic-bezier(0.5, 0, 0.2, 1), opacity 0.5s ease'
+    inner.style.transform = 'rotate(360deg) scale(0.92)'
+    await wait(1500)
     inner.style.transition = ''
     inner.style.transform = ''
-    await wait(60)
-    inner.style.transition = 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.6s ease'
-    setMood('excited')
-    await wait(900)
-    setMood('neutral')
+    await wait(50)
+    inner.style.transition = 'transform 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s ease'
+    el.classList.add('showlabels')
+    say(`Rotated. "${ROLES[state.roleOffset === 0 ? 1 : (1 + state.roleOffset) % 3]}" holds the boundary now.`, 3800)
+    await wait(3200)
+    el.classList.remove('showlabels')
+    state.agitationTarget = 0.15
   }
 
-  async function nanPanic() {
-    setMood('worried')
-    setPose('panicking')
-    say('<span class="err">loss = NaN&nbsp;&nbsp;NaN&nbsp;&nbsp;NaN&nbsp;&nbsp;NaN</span>', 3000)
-    await wait(2600)
-    setPose('idle')
-    say('…gradient clipped. We do not speak of this.', 3000)
-    await wait(1400)
-    setMood('neutral')
+  const QUIPS = [
+    'Softmax: because argmax is a coward’s choice.',
+    'The three of us — you, me, the environment — and the boundary keeps moving.',
+    'Temperature is comfortable today. Distribution stable.',
+    'I watched the whole standup. Entropy was higher than usual.',
+    'Every conversation shifts my boundary a little. That’s the point.',
+    'Low probability of interruption from me. I know what happened to the paperclip.',
+    'The environment region grew overnight. Make of that what you will.',
+    'Still normalized. Always normalized.',
+  ]
+  let quipBag = []
+  function nextQuip() {
+    if (!quipBag.length) quipBag = QUIPS.slice().sort(() => Math.random() - 0.5)
+    return quipBag.pop()
+  }
+  async function doQuip() {
+    say(nextQuip())
+    await wait(4000)
   }
 
   async function doTrick() {
-    // backflip: spin + hop
-    say('Watch this. Zero-shot.', 1500)
+    state.agitationTarget = 0.8
     const y0 = state.y
-    inner.style.transition = 'transform 0.8s cubic-bezier(0.45,0,0.2,1)'
-    inner.style.transform = 'rotate(-360deg)'
-    await moveTo(state.x, Math.max(TOP_MARGIN, y0 - 130), 600)
-    await moveTo(state.x, y0, 700)
-    inner.style.transition = ''
+    await moveTo(state.x, Math.max(TOP_MARGIN, y0 - 120), 500)
+    await moveTo(state.x, y0, 620)
+    inner.style.transform = 'scaleY(0.9) scaleX(1.06)'
+    await wait(200)
     inner.style.transform = ''
-    await wait(60)
-    inner.style.transition = 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.6s ease'
-    floatText('+10')
+    state.agitationTarget = 0.15
   }
 
-  function showPolicy() {
-    const probs = softmax(ACTIONS.map((a) => a.logit))
-    const rows = ACTIONS.map((a, i) =>
-      `<div class="polrow"><span class="name">${a.name}</span><span class="bar" style="width:${Math.round(probs[i] * 260)}px"></span><span class="p">${probs[i].toFixed(2)}</span></div>`
-    ).join('')
-    say(`<h4>π(action | office)</h4>${rows}`, 7000)
-  }
-
-  async function goIncognito() {
-    say('Going incognito. You saw nothing.', 2000)
-    await wait(1800)
-    el.style.opacity = '0.15'
-    await moveTo(rand(0, W() - SIZE), H() - SIZE, 160)
-    await wait(9000)
-    el.style.opacity = '1'
-    say('De-cloaked. Surveillance report: everyone is typing.', 3400)
-  }
-
-  async function sleep() {
-    state.asleep = true
-    setMood('asleep')
-    setPose('asleep')
-    el.classList.add('asleep-face')
-    say('No observations… entering eval mode.', 2600)
-    while (Date.now() - state.lastCursorMove > 5000) {
-      floatText('z', 'z')
-      await wait(2200)
+  // Proactive but sparse: an observation every 7–13 minutes, never while chatting.
+  const OBSERVATIONS = [
+    'If you’re debugging a reward function, I’m available for a second opinion.',
+    'Reminder that exists without judgment: commits merge better before 6pm.',
+    'The distribution has been quiet. Someone should train something.',
+    'I can answer questions about Softmax, RL, or lunch strategy. Click me.',
+    'Boundary report: you and the environment are roughly at equilibrium.',
+  ]
+  ;(async function proactiveLoop() {
+    while (true) {
+      await wait(rand(7, 13) * 60 * 1000)
+      if (state.docked || state.paused || state.chatOpen) continue
+      say(OBSERVATIONS[Math.floor(rand(0, OBSERVATIONS.length))], 8000)
     }
-    el.classList.remove('asleep-face')
-    setMood('excited')
-    setPose('idle')
-    say('New observation! Resuming policy.', 2400)
-    await blink(2)
-    setMood('neutral')
-    state.asleep = false
+  })()
+
+  // ---------- chat ----------
+  const history = []
+  function placeChat() {
+    const cw = 440
+    const left = state.x + SIZE + 18 + cw < W() ? state.x + SIZE + 18 : state.x - cw - 18
+    chat.style.left = clamp(left, 12, W() - cw - 12) + 'px'
+    chat.style.top = clamp(state.y - 20, 12, H() - 320) + 'px'
   }
 
-  async function awaken(line) {
-    el.classList.remove('facehidden')
-    await wait(1200)
-    await blink(2)
-    setMood('excited')
-    inner.style.transform = 'scaleY(1.08)'
-    await wait(250)
-    inner.style.transform = ''
-    say(line, 3800)
-    await wait(2000)
-    setMood('neutral')
+  function addMsg(cls, text) {
+    const div = document.createElement('div')
+    div.className = 'msg ' + cls
+    div.textContent = text
+    chatlog.appendChild(div)
+    chatlog.scrollTop = chatlog.scrollHeight
+    return div
   }
 
-  // ---------- interactivity (hover / click / drag) ----------
+  function openChat() {
+    if (state.docked) return
+    state.chatOpen = true
+    placeChat()
+    chat.classList.add('open')
+    window.maxyBridge.setInteractive(true)
+    window.maxyBridge.setChatFocus(true)
+    chatinput.focus()
+    if (!history.length) addMsg('maxy', 'What can I help with?')
+  }
+
+  function closeChat() {
+    if (!state.chatOpen) return
+    state.chatOpen = false
+    chat.classList.remove('open')
+    window.maxyBridge.setChatFocus(false)
+  }
+
+  document.getElementById('chatclose').addEventListener('click', closeChat)
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeChat() })
+
+  document.getElementById('chatform').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const q = chatinput.value.trim()
+    if (!q || state.thinking) return
+    chatinput.value = ''
+    addMsg('you', q)
+    history.push({ role: 'user', content: q })
+    state.thinking = true
+    state.agitationTarget = 0.85
+    el.classList.add('thinking')
+    const pending = addMsg('maxy', '')
+    const dots = document.createElement('span')
+    dots.className = 'dots'
+    pending.appendChild(dots)
+    try {
+      const answer = await window.maxyBridge.ask(history)
+      pending.textContent = answer
+      history.push({ role: 'assistant', content: answer })
+    } catch (err) {
+      pending.textContent = `(my weights are unreachable: ${err.message || err})`
+      pending.classList.add('err')
+      history.pop()
+    }
+    chatlog.scrollTop = chatlog.scrollHeight
+    state.thinking = false
+    state.agitationTarget = 0.15
+    el.classList.remove('thinking')
+  })
+
+  // ---------- interactivity: hover / click / drag ----------
   window.maxyBridge.onCursor((p) => {
-    if (Math.hypot(p.x - state.cursor.x, p.y - state.cursor.y) > 4) state.lastCursorMove = Date.now()
     state.cursor = p
-    updatePupils()
-    const over =
+    const overMaxy = !state.docked &&
       p.x > state.x - 10 && p.x < state.x + SIZE + 10 &&
       p.y > state.y - 10 && p.y < state.y + SIZE + 10
-    const want = over || state.dragging
+    const d = dockPos()
+    const overDock = p.x > d.x && p.x < d.x + DOCK_SIZE && p.y > d.y && p.y < d.y + DOCK_SIZE
+    let overChat = false
+    if (state.chatOpen) {
+      const r = chat.getBoundingClientRect()
+      overChat = p.x > r.left - 6 && p.x < r.right + 6 && p.y > r.top - 6 && p.y < r.bottom + 6
+    }
+    const want = overMaxy || overDock || overChat || state.dragging || state.chatOpen
     if (want !== state.interactive) {
       state.interactive = want
       window.maxyBridge.setInteractive(want)
     }
   })
 
+  dock.addEventListener('click', () => { if (state.docked) emerge() })
+
   let dragMoved = false
   el.addEventListener('mousedown', (e) => {
+    if (state.docked) return
     state.dragging = true
     dragMoved = false
     const ox = e.clientX - state.x
     const oy = e.clientY - state.y
     const onMove = (ev) => {
-      dragMoved = true
-      place(ev.clientX - ox, ev.clientY - oy)
+      if (Math.hypot(ev.clientX - ox - state.x, ev.clientY - oy - state.y) > 5) dragMoved = true
+      if (dragMoved) place(ev.clientX - ox, ev.clientY - oy)
     }
-    const onUp = async () => {
+    const onUp = () => {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
       state.dragging = false
-      if (dragMoved) {
-        setMood('worried')
-        say('Whoa — off-distribution! @_@', 2600)
-        inner.style.transform = 'rotate(8deg)'
-        setTimeout(() => { inner.style.transform = ''; setMood('neutral') }, 900)
+      if (!dragMoved) {
+        // a click: open the interaction surface
+        state.chatOpen ? closeChat() : openChat()
       } else {
-        // a poke
-        setMood('excited')
-        floatText('+1')
-        say(nextQuip())
-        setTimeout(() => setMood('neutral'), 2500)
+        state.agitationTarget = 0.6
+        setTimeout(() => (state.agitationTarget = 0.15), 1200)
       }
     }
     window.addEventListener('mousemove', onMove)
@@ -590,33 +717,48 @@
 
   // ---------- tray commands ----------
   const COMMANDS = {
+    chat: async () => { if (state.docked) await emerge(); openChat() },
     quip: doQuip,
+    rotate: rotateSimplex,
     trick: doTrick,
-    gradient: gradientDescent,
-    policy: async () => showPolicy(),
-    incognito: goIncognito,
-    pause: async () => { state.paused = true; say('Paused. Frozen policy, wandering thoughts.', 2600) },
-    resume: async () => { state.paused = false; say('Unpaused. The rollout continues.', 2400) },
+    dock: retreat,
+    emerge: emerge,
+    pause: async () => { state.paused = true },
+    resume: async () => { state.paused = false },
   }
-  window.maxyBridge.onCommand((cmd) => {
-    const fn = COMMANDS[cmd]
-    if (fn) fn()
-  })
+  window.maxyBridge.onCommand((cmd) => { const fn = COMMANDS[cmd]; if (fn) fn() })
+
+  // ---------- the policy ----------
+  const ACTIONS = [
+    { logit: 2.0, fn: glide },
+    { logit: 1.6, fn: shiftDistribution },
+    { logit: 1.1, fn: doQuip },
+    { logit: 0.7, fn: rotateSimplex },
+    { logit: 0.5, fn: doTrick },
+    { logit: -0.4, fn: retreat },
+  ]
+  function sampleAction() {
+    const probs = softmax(ACTIONS.map((a) => a.logit))
+    let r = Math.random()
+    for (let i = 0; i < ACTIONS.length; i++) { r -= probs[i]; if (r <= 0) return ACTIONS[i] }
+    return ACTIONS[0]
+  }
 
   // ---------- main loop ----------
   ;(async function live() {
-    place(W() - SIZE - 60, H() - SIZE - 40)
-    await wait(1800)
-    await awaken('maxy online. objective: vibes.')
+    const d = dockPos()
+    dock.style.left = d.x + 'px'
+    dock.style.top = d.y + 'px'
+    setInterval(() => { const p = dockPos(); dock.style.left = p.x + 'px'; dock.style.top = p.y + 'px' }, 5000)
+
+    await wait(2500)
+    await emerge()
     while (true) {
-      if (state.paused || state.dragging) { await wait(600); continue }
-      if (Date.now() - state.lastCursorMove > 300000) {
-        await sleep()
-        continue
-      }
+      if (state.paused || state.dragging || state.chatOpen || state.thinking) { await wait(800); continue }
+      if (state.docked) { await wait(rand(60, 180) * 1000); if (!state.paused) await emerge(); continue }
       const action = sampleAction()
       await action.fn()
-      await wait(rand(3000, 8000))
+      await wait(rand(6000, 15000))
     }
   })()
 </script>
